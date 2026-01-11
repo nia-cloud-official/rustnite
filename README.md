@@ -84,7 +84,6 @@
    define('DB_NAME', 'your_database');
    define('DB_USER', 'your_username');
    define('DB_PASS', 'your_password');
-   define('PAYPAL_DONATE_URL', 'your_paypal_link');
    ```
 
 ### Docker Setup (Optional)
@@ -329,8 +328,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Donation
 Support the project development:
-- 💝 **PayPal**: [Donate via PayPal](https://paypal.me/yourusername)
-- ☕ **Buy me a coffee**: [Support on Ko-fi](https://ko-fi.com/yourusername)
+- 💝 **PayPal**: [Donate via PayPal](https://www.paypal.com/donate/?hosted_button_id=RKBHLNTG326DA)
 - ⭐ **GitHub Star**: Star the repository to show support
 
 ---
