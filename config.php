@@ -8,7 +8,7 @@ define('DB_PORT', '10272');
 
 // App configuration
 define('APP_NAME', 'Rustnite');
-define('APP_URL', 'https://rustnite.wasmer.io');
+define('APP_URL', 'https://rustnite.wasmer.app');
 define('PAYPAL_DONATE_URL', 'https://www.paypal.com/donate/?hosted_button_id=RKBHLNTG326DA');
 
 // Security
