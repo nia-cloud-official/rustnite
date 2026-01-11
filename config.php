@@ -19,7 +19,7 @@ define('SESSION_LIFETIME', 3600 * 24 * 30); // 30 days
 define('XP_PER_LESSON', 100);
 define('XP_PER_LEVEL', 1000);
 
-// Error reporting (disable in production)
+// Error reporting (enable for debugging)
 error_reporting(E_ALL);
-ini_set('display_errors', 0);
+ini_set('display_errors', 1);
 ?>
