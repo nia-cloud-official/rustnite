@@ -1,14 +1,14 @@
 <?php
 // Database configuration
-define('DB_HOST', '127.0.0.1');
+define('DB_HOST', 'db.fr-pari1.bengt.wasmernet.com');
 define('DB_NAME', 'rustnite');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_PORT', '3306');
+define('DB_USER', '3ac2b01570198000841f60ead8ad');
+define('DB_PASS', '06963ac2-b015-725b-8000-620e12cfcb0e');
+define('DB_PORT', '10272');
 
 // App configuration
 define('APP_NAME', 'Rustnite');
-define('APP_URL', 'http://localhost');
+define('APP_URL', 'https://rustnite.wasmer.io');
 define('PAYPAL_DONATE_URL', 'https://www.paypal.com/donate/?hosted_button_id=RKBHLNTG326DA');
 
 // Security
@@ -21,5 +21,5 @@ define('XP_PER_LEVEL', 1000);
 
 // Error reporting (disable in production)
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 ?>
