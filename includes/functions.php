@@ -215,9 +215,9 @@ function check_and_award_badges($user_id) {
                     break;
                     
                 case 'rank_achieved':
-                    $stmt = $pdo->prepare("SELECT COUNT(*) + 1 as rank FROM users WHERE xp > ?");
+                    $stmt = $pdo->prepare("SELECT COUNT(*) + 1 as `user_rank` FROM users WHERE xp > ?");
                     $stmt->execute([$user['xp']]);
-                    $rank = $stmt->fetch()['rank'];
+                    $rank = $stmt->fetch()['user_rank'];
                     $earned = $rank <= $badge['requirement_value'];
                     break;
                     

@@ -18,9 +18,9 @@ $stmt->execute([$_SESSION['user_id']]);
 $stats = $stmt->fetch();
 
 // Get user rank
-$stmt = $pdo->prepare("SELECT COUNT(*) + 1 as rank FROM users WHERE xp > ?");
+$stmt = $pdo->prepare("SELECT COUNT(*) + 1 as `user_rank` FROM users WHERE xp > ?");
 $stmt->execute([$user['xp']]);
-$user_rank = $stmt->fetch()['rank'];
+$user_rank = $stmt->fetch()['user_rank'];
 
 // Get recent activity
 $stmt = $pdo->prepare("
