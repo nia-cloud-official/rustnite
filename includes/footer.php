@@ -44,9 +44,9 @@
                             $total_lessons->execute();
                             $total_count = $total_lessons->fetch()['count'];
                             
-                            $user_rank = $pdo->prepare("SELECT COUNT(*) + 1 as rank FROM users WHERE xp > ?");
+                            $user_rank = $pdo->prepare("SELECT COUNT(*) + 1 as `user_rank` FROM users WHERE xp > ?");
                             $user_rank->execute([$user['xp']]);
-                            $rank = $user_rank->fetch()['rank'];
+                            $rank = $user_rank->fetch()['user_rank'];
                             ?>
                             
                             <div class="grid grid-cols-2 gap-4">
