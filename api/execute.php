@@ -1,4 +1,8 @@
 <?php
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require_once '../includes/db.php';
 require_once '../includes/functions.php';
 
@@ -13,7 +17,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Test response to make sure API is working
+if (isset($_GET['test'])) {
+    echo json_encode(['status' => 'API is working', 'timestamp' => time()]);
+    exit;
+}
+
 $input = json_decode(file_get_contents('php://input'), true);
+
+// Log for debugging
+error_log("Execute API called with input: " . file_get_contents('php://input'));
+
 $code = $input['code'] ?? '';
 $lesson_id = (int)($input['lesson_id'] ?? 0);
 
