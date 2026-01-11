@@ -324,7 +324,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🐛 **Bug Reports**: Open an issue on GitHub
 - 💡 **Feature Requests**: Discuss in GitHub Discussions
 - 💬 **Community**: Join our Discord server
-- 📧 **Contact**: Email us at support@rustnite.dev
+- 📧 **Contact**: Email us at miltonhyndrex@gmail.com
 
 ### Donation
 Support the project development:
