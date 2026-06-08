@@ -1,6 +1,15 @@
 <?php
-session_start();
 require_once 'config.php';
+
+session_set_cookie_params([
+    'lifetime' => SESSION_LIFETIME,
+    'path' => '/',
+    'secure' => true,
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
+
+session_start();
 require_once 'includes/db.php';
 require_once 'includes/functions.php';
 
