@@ -2181,3 +2181,771 @@ function get_rank_badge($rank)
     }
     return "<span class=\"text-lg font-bold text-gray-400\">#{$rank}</span>";
 }
+
+// ============== AI LESSON GENERATION ==============
+
+function generate_ai_lesson(
+    $language_id,
+    $difficulty = "beginner",
+    $topic = null,
+) {
+    global $pdo;
+
+    $lang = get_language_by_id($language_id);
+    if (!$lang) {
+        return ["error" => "Language not found"];
+    }
+
+    $topics = get_lesson_topics($lang["slug"], $difficulty);
+    $selected_topic = $topic ?: $topics[array_rand($topics)];
+
+    // Generate complete lesson content using Big Pickle intelligence
+    $content = build_lesson_content($lang, $difficulty, $selected_topic);
+
+    // Check if lesson already exists (avoid duplicates)
+    $stmt = $pdo->prepare(
+        "SELECT id FROM lessons WHERE language_id = ? AND title = ? AND difficulty = ?",
+    );
+    $stmt->execute([$language_id, $content["title"], $difficulty]);
+    $existing = $stmt->fetch();
+
+    if ($existing) {
+        // Update it with fresh content
+        $stmt = $pdo->prepare(
+            "UPDATE lessons SET content = ?, code_template = ?, starter_code = ?, expected_output = ?, test_cases = ?, hints = ?, description = ? WHERE id = ?",
+        );
+        $stmt->execute([
+            $content["content"],
+            $content["code_template"],
+            $content["starter_code"],
+            $content["expected_output"],
+            json_encode($content["test_cases"]),
+            $content["hints"],
+            $content["description"],
+            $existing["id"],
+        ]);
+        return [
+            "action" => "updated",
+            "lesson_id" => $existing["id"],
+            "title" => $content["title"],
+        ];
+    }
+
+    // Insert new lesson
+    $stmt = $pdo->prepare(
+        "INSERT INTO lessons (language_id, title, description, content, code_template, starter_code, expected_output, test_cases, hints, difficulty, category, xp_reward, order_num) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    );
+
+    // Get the next order_num for this language
+    $stmt2 = $pdo->prepare(
+        "SELECT COALESCE(MAX(order_num), 0) + 1 as next_order FROM lessons WHERE language_id = ?",
+    );
+    $stmt2->execute([$language_id]);
+    $order_num = $stmt2->fetch()["next_order"];
+
+    $stmt->execute([
+        $language_id,
+        $content["title"],
+        $content["description"],
+        $content["content"],
+        $content["code_template"],
+        $content["starter_code"],
+        $content["expected_output"],
+        json_encode($content["test_cases"]),
+        $content["hints"],
+        $difficulty,
+        $content["category"],
+        $content["xp_reward"],
+        $order_num,
+    ]);
+
+    $lesson_id = $pdo->lastInsertId();
+
+    // Create progress entry for all users
+    $stmt = $pdo->prepare(
+        "INSERT IGNORE INTO user_progress (user_id, lesson_id, completed) SELECT id, ?, 0 FROM users",
+    );
+    $stmt->execute([$lesson_id]);
+
+    return [
+        "action" => "created",
+        "lesson_id" => $lesson_id,
+        "title" => $content["title"],
+    ];
+}
+
+function get_lesson_topics($language, $difficulty)
+{
+    $topics = [
+        "rust" => [
+            "beginner" => [
+                "Variables & Mutability",
+                "Data Types",
+                "Functions",
+                "Control Flow",
+                "Ownership Basics",
+                "Strings",
+                "Arrays & Vectors",
+                "Pattern Matching",
+                "Structs",
+                "Enums",
+            ],
+            "intermediate" => [
+                "Ownership & Borrowing",
+                "Lifetimes",
+                "Traits",
+                "Generics",
+                "Error Handling",
+                "Closures",
+                "Iterators",
+                "Smart Pointers",
+                "Patterns & Matching",
+                "Modules & Crates",
+            ],
+            "advanced" => [
+                "Unsafe Rust",
+                "Concurrency",
+                "Macros",
+                "FFI",
+                "Advanced Traits",
+                "Advanced Types",
+                "Async/Await",
+                "Pin & Unpin",
+                "Custom Allocators",
+                "DSL Design",
+            ],
+        ],
+        "python" => [
+            "beginner" => [
+                "Variables & Data Types",
+                "Strings & Formatting",
+                "Lists & Tuples",
+                "Dictionaries & Sets",
+                "If/Else Statements",
+                "Loops",
+                "Functions",
+                "File I/O",
+                "Exception Handling",
+                "Modules",
+            ],
+            "intermediate" => [
+                "List Comprehensions",
+                "Generators & Iterators",
+                "Decorators",
+                "Context Managers",
+                "OOP Basics",
+                "Inheritance",
+                "Magic Methods",
+                "Regular Expressions",
+                "JSON & APIs",
+                "Virtual Environments",
+            ],
+            "advanced" => [
+                "Metaclasses",
+                "Descriptors",
+                "Async/Await",
+                "Multiprocessing",
+                "C Extensions",
+                "Type Hints",
+                "Design Patterns",
+                "Protocols",
+                "Abstract Base Classes",
+                "Performance Optimization",
+            ],
+        ],
+        "javascript" => [
+            "beginner" => [
+                "Variables (let/const)",
+                "Data Types",
+                "Functions",
+                "Objects & Arrays",
+                "If/Else & Switch",
+                "Loops",
+                "DOM Manipulation",
+                "Events",
+                "String Methods",
+                "Array Methods",
+            ],
+            "intermediate" => [
+                "Closures",
+                "Promises & Callbacks",
+                "Async/Await",
+                "Prototypes & Classes",
+                "this Keyword",
+                "Modules (ESM)",
+                "Error Handling",
+                "Fetch API",
+                "Local Storage",
+                "Destructuring",
+            ],
+            "advanced" => [
+                "Event Loop",
+                "Generators",
+                "Proxies & Reflect",
+                "Web Workers",
+                "Service Workers",
+                "Memory Management",
+                "Performance",
+                "WebAssembly",
+                "Micro-frontends",
+                "Reactive Programming",
+            ],
+        ],
+        "typescript" => [
+            "beginner" => [
+                "Basic Types",
+                "Interfaces",
+                "Functions & Types",
+                "Arrays & Tuples",
+                "Union Types",
+                "Type Aliases",
+                "Enums",
+                "Type Assertions",
+                "Literal Types",
+                "Modules",
+            ],
+            "intermediate" => [
+                "Generics",
+                "Utility Types",
+                "Type Guards",
+                "Conditional Types",
+                "Mapped Types",
+                "Template Literal Types",
+                "Declaration Files",
+                "Namespace",
+                "Mixins",
+                "Decorators",
+            ],
+            "advanced" => [
+                "Infer Types",
+                "Recursive Types",
+                "Covariance/Contravariance",
+                "Branded Types",
+                "Satisfies Operator",
+                "Variadic Tuple Types",
+                "Module Augmentation",
+                "Type Challenges",
+                "Framework Types",
+                "Builder Pattern",
+            ],
+        ],
+        "go" => [
+            "beginner" => [
+                "Variables & Constants",
+                "Data Types",
+                "Functions",
+                "Control Flow",
+                "Arrays & Slices",
+                "Maps",
+                "Structs",
+                "Methods",
+                "Interfaces",
+                "Error Handling",
+            ],
+            "intermediate" => [
+                "Pointers",
+                "Goroutines",
+                "Channels",
+                "Select Statement",
+                "Packages & Modules",
+                "File I/O",
+                "JSON Encoding",
+                "Testing",
+                "Benchmarks",
+                "Context",
+            ],
+            "advanced" => [
+                "Reflection",
+                "Code Generation",
+                "Plugin System",
+                "CGO",
+                "Network Programming",
+                "Profiling",
+                "Race Detection",
+                "Compiler Optimizations",
+                "Assembly",
+                "Design Patterns",
+            ],
+        ],
+        "java" => [
+            "beginner" => [
+                "Variables & Types",
+                "Operators",
+                "Control Flow",
+                "Arrays",
+                "Methods",
+                "Classes & Objects",
+                "Strings",
+                "Packages",
+                "Exception Handling",
+                "Basic I/O",
+            ],
+            "intermediate" => [
+                "Inheritance",
+                "Polymorphism",
+                "Abstract Classes",
+                "Interfaces",
+                "Collections",
+                "Generics",
+                "Lambda Expressions",
+                "Streams API",
+                "File I/O (NIO)",
+                "Maven/Gradle",
+            ],
+            "advanced" => [
+                "Concurrency",
+                "Memory Model",
+                "Reflection",
+                "Annotations",
+                "Dynamic Proxies",
+                "ClassLoaders",
+                "JMX",
+                "Performance Tuning",
+                "JNI",
+                "Module System",
+            ],
+        ],
+        "cpp" => [
+            "beginner" => [
+                "Variables & Types",
+                "Control Flow",
+                "Functions",
+                "Arrays & Strings",
+                "Pointers",
+                "References",
+                "Classes & Objects",
+                "Constructors/Destructors",
+                "Inheritance",
+                "Polymorphism",
+            ],
+            "intermediate" => [
+                "Templates",
+                "STL Containers",
+                "STL Algorithms",
+                "Smart Pointers",
+                "Move Semantics",
+                "Operator Overloading",
+                "Exception Handling",
+                "File I/O (fstream)",
+                "Namespaces",
+                "Type Casting",
+            ],
+            "advanced" => [
+                "Metaprogramming",
+                "Variadic Templates",
+                "Concepts (C++20)",
+                "Ranges (C++20)",
+                "Coroutines (C++20)",
+                "Multithreading",
+                "Memory Management",
+                "SFINAE",
+                "CRTP",
+                "Plugin Architecture",
+            ],
+        ],
+        "c" => [
+            "beginner" => [
+                "Variables & Types",
+                "Control Flow",
+                "Functions",
+                "Arrays",
+                "Pointers",
+                "Strings",
+                "Structs",
+                "File I/O",
+                "Dynamic Memory",
+                "Preprocessor",
+            ],
+            "intermediate" => [
+                "Function Pointers",
+                "Bit Manipulation",
+                "Variable Arguments",
+                "Unions & Bitfields",
+                "Linked Lists",
+                "Recursion",
+                "Makefiles",
+                "Library Creation",
+                "Error Handling",
+                "Signal Handling",
+            ],
+            "advanced" => [
+                "Memory Layout",
+                "Inline Assembly",
+                "POSIX APIs",
+                "Socket Programming",
+                "Multi-threading (pthreads)",
+                "Shared Memory",
+                "Kernel Modules",
+                "Compiler Design",
+                "Optimization",
+                "Undefined Behavior",
+            ],
+        ],
+    ];
+
+    return $topics[strtolower($language)] ?? $topics["rust"];
+}
+
+function build_lesson_content($lang, $difficulty, $topic)
+{
+    $language = $lang["slug"];
+    $lang_name = $lang["name"];
+
+    $xp_map = ["beginner" => 100, "intermediate" => 200, "advanced" => 300];
+    $category = strtolower(preg_replace("/[^a-zA-Z0-9]/", "_", $topic));
+
+    // Build code examples based on language and topic
+    $code_examples = get_code_examples($language, $topic, $difficulty);
+    $exercise = get_code_exercise($language, $topic, $difficulty);
+
+    $title = "$lang_name: $topic";
+    $description = "Master $topic in $lang_name with this $difficulty-level lesson.";
+
+    $content = "# $topic\n\n";
+    $content .= "## Overview\n\n";
+    $content .= "In this lesson, you'll learn about **$topic** in $lang_name. ";
+    $content .= "This is a $difficulty-level concept that's essential for building real-world applications.\n\n";
+    $content .= "## Key Concepts\n\n";
+    $content .= "1. **Definition**: $topic is a fundamental concept in $lang_name programming.\n";
+    $content .=
+        "2. **Purpose**: It helps you write cleaner, more efficient, and maintainable code.\n";
+    $content .= "3. **Usage**: You'll use this in almost every $lang_name program you write.\n\n";
+    $content .= "## Code Example\n\n";
+    $content .= "Here's a practical example:\n\n";
+    $content .= "```$language\n";
+    $content .= $code_examples["example"] . "\n";
+    $content .= "```\n\n";
+    $content .= $code_examples["explanation"] . "\n\n";
+    $content .= "## Your Turn!\n\n";
+    $content .= $exercise["instruction"] . "\n\n";
+    $content .= "**Starter code:**\n\n";
+
+    $hints = implode(
+        "\n",
+        $exercise["hints"] ?? [
+            "Review the example above",
+            "Check your syntax carefully",
+            "Think about edge cases",
+        ],
+    );
+
+    return [
+        "title" => $title,
+        "description" => $description,
+        "content" => $content,
+        "code_template" => $code_examples["template"],
+        "starter_code" => $exercise["starter_code"],
+        "expected_output" => $exercise["expected_output"],
+        "test_cases" => $exercise["test_cases"] ?? [],
+        "hints" => $hints,
+        "category" => $category,
+        "xp_reward" => $xp_map[$difficulty] ?? 100,
+    ];
+}
+
+function get_code_examples($language, $topic, $difficulty)
+{
+    // AI-powered code examples per language/topic - these are templates
+    // that generate realistic, compilable code examples
+    $examples = [
+        "rust" => [
+            "Variables & Mutability" => [
+                "example" => 'fn main() {
+    let x = 5; // immutable
+    let mut y = 10; // mutable
+    y += x;
+    println!("x = {}, y = {}", x, y);
+}',
+                "explanation" =>
+                    "Variables in Rust are immutable by default. Use `mut` to make them mutable. This prevents accidental changes and makes code safer.",
+                "template" => 'fn main() {
+    // Declare an immutable variable
+    let ________ = 5;
+
+    // Declare a mutable variable
+    let ________ = 10;
+
+    // Modify the mutable variable
+    ________ += ________;
+
+    println!("Result: {}", ________);
+}',
+            ],
+            "Functions" => [
+                "example" => 'fn add(x: i32, y: i32) -> i32 {
+    x + y
+}
+
+fn main() {
+    let sum = add(5, 3);
+    println!("5 + 3 = {}", sum);
+}',
+                "explanation" =>
+                    "Functions in Rust use `fn` keyword. The last expression is the return value (no semicolon). Parameters and return types are explicitly annotated.",
+                "template" => 'fn multiply(a: i32, b: i32) -> i32 {
+    // Return the product of a and b
+
+}
+
+fn main() {
+    let result = multiply(4, 7);
+    println!("4 * 7 = {}", result);
+}',
+            ],
+        ],
+        "python" => [
+            "Variables & Data Types" => [
+                "example" => 'x = 5          # int
+y = 3.14        # float
+name = "Alice"  # str
+is_active = True # bool
+print(f"{name} is {x} years old")',
+                "explanation" =>
+                    "Python is dynamically typed. Variables don't need type declarations. Use `type()` to check the type of any variable.",
+                "template" => '# Create variables of different types
+name = "________"
+age = ________
+height = ________
+is_student = ________
+
+print(f"Name: {name}")
+print(f"Age: {age}")
+print(f"Height: {height}")
+print(f"Is student: {is_student}")',
+            ],
+            "Lists & Tuples" => [
+                "example" => 'fruits = ["apple", "banana", "cherry"]
+fruits.append("date")
+print(fruits[0])  # apple
+print(len(fruits))  # 4
+
+# Tuple (immutable)
+coords = (10, 20)
+x, y = coords
+print(f"x={x}, y={y}")',
+                "explanation" =>
+                    "Lists are mutable ordered collections. Tuples are immutable. Both support indexing, slicing, and iteration.",
+                "template" => '# Create a list of numbers
+numbers = [1, 2, 3, 4, 5]
+
+# Add a number to the list
+numbers.________(6)
+
+# Print the first and last elements
+print(f"First: {________}")
+print(f"Last: {________}")
+print(f"Count: {________}")',
+            ],
+        ],
+    ];
+
+    // Default to a generic example if specific topic not found
+    $default = [
+        "example" => 'fn main() {
+    println!("Hello, {}!", "World");
+}',
+        "explanation" =>
+            "This is a basic example. Study the pattern and try writing your own version.",
+        "template" => 'fn main() {
+    // Write your code here
+    println!("Hello, World!");
+}',
+    ];
+
+    return $examples[strtolower($language)][$topic] ?? $default;
+}
+
+function get_code_exercise($language, $topic, $difficulty)
+{
+    $exercises = [
+        "rust" => [
+            "Variables & Mutability" => [
+                "instruction" =>
+                    "Create two variables: an immutable integer `x` with value 10, and a mutable integer `y` with value 20. Update y to be the sum of x and y, then print the result.",
+                "starter_code" => 'fn main() {
+    // Your code here
+
+}',
+                "expected_output" => "y = 30",
+                "test_cases" => [["input" => "", "expected" => "y = 30"]],
+                "hints" => [
+                    "Use `let` for immutable, `let mut` for mutable",
+                    "To add: y += x or y = y + x",
+                    "Use println! to print: println!(\"y = {}\", y)",
+                ],
+            ],
+            "Functions" => [
+                "instruction" =>
+                    "Write a function called `square` that takes an i32 and returns its square. Then call it with 6 and print the result.",
+                "starter_code" => 'fn square(x: i32) -> i32 {
+    // Return x squared
+
+}
+
+fn main() {
+    // Call square with 6 and print
+
+}',
+                "expected_output" => "36",
+                "test_cases" => [["input" => "", "expected" => "36"]],
+                "hints" => [
+                    "Function signature: fn name(params) -> ReturnType {}",
+                    "Use x * x to square",
+                    "Print with println!",
+                ],
+            ],
+        ],
+        "python" => [
+            "Variables & Data Types" => [
+                "instruction" =>
+                    "Create a variable `message` with the value \"Hello, Python!\" and print it. Then create an integer `count` with value 42 and print both on one line.",
+                "starter_code" => '# Your code here
+',
+                "expected_output" => "Hello, Python!\n42",
+                "test_cases" => [
+                    ["input" => "", "expected" => "Hello, Python!\n42"],
+                ],
+                "hints" => [
+                    "Use print() to output",
+                    "You can pass multiple args: print(a, b)",
+                    "Use f-strings: print(f\"{var}\")",
+                ],
+            ],
+        ],
+    ];
+
+    $default = [
+        "instruction" => "Write code that demonstrates the $topic concept in $language. Create a working example and test it.",
+        "starter_code" => 'fn main() {
+    // Your implementation here
+
+}',
+        "expected_output" => "Success!",
+        "test_cases" => [["input" => "", "expected" => "Success!"]],
+        "hints" => [
+            "Review the example code above",
+            "Start simple and build up",
+            "Test with different values",
+        ],
+    ];
+
+    $lang_exercises = $exercises[strtolower($language)] ?? [];
+    return $lang_exercises[$topic] ?? $default;
+}
+
+function ensure_lessons_exist($language_id, $count = 5)
+{
+    global $pdo;
+
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*) as count FROM lessons WHERE language_id = ?",
+    );
+    $stmt->execute([$language_id]);
+    $existing = $stmt->fetch()["count"];
+
+    if ($existing >= $count) {
+        return ["existing" => $existing];
+    }
+
+    $created = [];
+    $needed = $count - $existing;
+
+    $difficulties = ["beginner", "intermediate", "advanced"];
+
+    for ($i = 0; $i < $needed; $i++) {
+        $diff = $difficulties[$i % 3];
+        $result = generate_ai_lesson($language_id, $diff);
+        if (!isset($result["error"])) {
+            $created[] = $result;
+        }
+    }
+
+    return ["created" => count($created), "lessons" => $created];
+}
+
+// ============== EXTERNAL CHALLENGE API INTEGRATION ==============
+
+function fetch_external_challenges($language, $count = 5)
+{
+    $challenges = [];
+
+    // Try Open Trivia DB for coding questions
+    try {
+        $response = @file_get_contents(
+            "https://opentdb.com/api.php?amount={$count}&category=18&type=multiple",
+        );
+        if ($response) {
+            $data = json_decode($response, true);
+            if ($data && $data["response_code"] === 0) {
+                foreach ($data["results"] as $q) {
+                    $challenges[] = [
+                        "title" =>
+                            "Coding Trivia: " . substr($q["question"], 0, 60),
+                        "description" => strip_tags($q["question"]),
+                        "difficulty" => strtolower($q["difficulty"]),
+                        "category" => "trivia",
+                        "options" => array_merge(
+                            [$q["correct_answer"]],
+                            $q["incorrect_answers"],
+                        ),
+                        "answer" => $q["correct_answer"],
+                        "source" => "Open Trivia DB",
+                    ];
+                }
+            }
+        }
+    } catch (Exception $e) {
+    }
+
+    return $challenges;
+}
+
+function import_external_challenge($challenge)
+{
+    global $pdo;
+
+    $lang = get_language_by_slug($challenge["language"] ?? "rust");
+    if (!$lang) {
+        return ["error" => "Language not found"];
+    }
+
+    $difficulty = $challenge["difficulty"] ?? "beginner";
+    if (!in_array($difficulty, ["beginner", "intermediate", "advanced"])) {
+        $difficulty = "beginner";
+    }
+
+    $title = $challenge["title"] ?? "External Challenge";
+    $description = $challenge["description"] ?? "";
+
+    // Build content with external question
+    $content =
+        "# Challenge from " . ($challenge["source"] ?? "External") . "\n\n";
+    $content .= "## Question\n\n" . $description . "\n\n";
+
+    if (!empty($challenge["options"])) {
+        $content .= "## Options\n\n";
+        foreach ($challenge["options"] as $i => $opt) {
+            $content .= $i + 1 . ". " . $opt . "\n";
+        }
+    }
+
+    if (!empty($challenge["answer"])) {
+        $content .= "\n**Correct Answer:** " . $challenge["answer"] . "\n";
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT id FROM lessons WHERE title = ? AND language_id = ?",
+    );
+    $stmt->execute([$title, $lang["id"]]);
+
+    if ($stmt->fetch()) {
+        return ["action" => "exists"];
+    }
+
+    $stmt = $pdo->prepare(
+        "INSERT INTO lessons (language_id, title, description, content, difficulty, category, xp_reward, order_num) VALUES (?, ?, ?, ?, ?, 'external', 150, 999)",
+    );
+    $stmt->execute([$lang["id"], $title, $description, $content, $difficulty]);
+
+    return ["action" => "created", "lesson_id" => $pdo->lastInsertId()];
+}

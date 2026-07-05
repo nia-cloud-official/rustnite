@@ -42,6 +42,15 @@ $lessons = $stmt->fetchAll();
 
 $completed_count = count(array_filter($lessons, fn($l) => $l["completed"]));
 $total_count = count($lessons);
+
+// Build filter query string for reuse
+$filter_query = "";
+if ($difficulty_filter !== "all") {
+    $filter_query .= "&difficulty=" . urlencode($difficulty_filter);
+}
+if (!empty($search_query)) {
+    $filter_query .= "&search=" . urlencode($search_query);
+}
 ?>
 <div style="animation: fade-in 0.5s ease-out;">
     <!-- Header -->
@@ -61,12 +70,7 @@ $total_count = count($lessons);
     <!-- Language Tabs (Twitch-style category bar) -->
     <div class="tw-card tw-card-body mb-6" style="padding:12px;">
         <div class="flex items-center gap-2 overflow-x-auto" style="scrollbar-width:none;">
-            <a href="?page=lessons<?=
-            $difficulty_filter !== "all"
-                ? "&difficulty=" . $difficulty_filter
-                : ""
-            $search_query ? "&search=" . $search_query : ""
-            ?>"
+            <a href="?page=lessons<?= $filter_query ?>"
                class="tw-btn <?= $selected_lang === 0
                    ? "tw-btn-primary"
                    : "tw-btn-ghost" ?> tw-btn-sm">
@@ -74,13 +78,8 @@ $total_count = count($lessons);
                 All
             </a>
             <?php foreach ($languages as $lang): ?>
-                <a href="?page=lessons&language=<?=
-                $lang["id"]
-                $difficulty_filter !== "all"
-                    ? "&difficulty=" . $difficulty_filter
-                    : ""
-                $search_query ? "&search=" . $search_query : ""
-                ?>"
+                <a href="?page=lessons&language=<?= $lang["id"] .
+                    $filter_query ?>"
                    class="tw-btn <?= $selected_lang === $lang["id"]
                        ? "tw-btn-primary"
                        : "tw-btn-ghost" ?> tw-btn-sm"
@@ -108,16 +107,22 @@ $total_count = count($lessons);
                 ["all", "beginner", "intermediate", "advanced"]
                 as $diff
             ): ?>
-                <a href="?page=lessons&language=<?= $selected_lang ?>&difficulty=<?=
-$diff
-$search_query ? "&search=" . $search_query : ""
-?>"
+                <a href="?page=lessons&language=<?= $selected_lang ?>&difficulty=<?= $diff .
+    (!empty($search_query) ? "&search=" . urlencode($search_query) : "") ?>"
                    class="tw-btn <?= $difficulty_filter === $diff
                        ? "tw-btn-primary"
                        : "tw-btn-ghost" ?> tw-btn-sm">
                     <?= ucfirst($diff) ?>
                 </a>
             <?php endforeach; ?>
+        </div>
+
+        <div class="ml-auto">
+            <a href="?page=lesson&generate=1&language=<?= $selected_lang ?:
+                1 ?>" class="tw-btn tw-btn-primary tw-btn-sm" style="background: linear-gradient(135deg, #9147FF, #A970FF);">
+                <i class="fas fa-magic"></i>
+                Generate AI Lesson
+            </a>
         </div>
     </div>
 
@@ -171,11 +176,18 @@ $search_query ? "&search=" . $search_query : ""
         <div class="tw-card tw-card-body" style="text-align:center; padding:60px 20px;">
             <i class="fas fa-book-open" style="font-size:64px; color:#2D2D35; margin-bottom:16px;"></i>
             <h3 class="text-xl font-bold mb-2">No Lessons Found</h3>
-            <p class="text-twitch-muted mb-6">Try a different language or difficulty filter.</p>
-            <a href="?page=lessons" class="tw-btn tw-btn-primary">
-                <i class="fas fa-undo"></i>
-                Reset Filters
-            </a>
+            <p class="text-twitch-muted mb-6">Try a different language or difficulty filter, or generate a new lesson with AI!</p>
+            <div class="flex items-center justify-center gap-3">
+                <a href="?page=lessons" class="tw-btn tw-btn-ghost">
+                    <i class="fas fa-undo"></i>
+                    Reset Filters
+                </a>
+                <a href="?page=lesson&generate=1&language=<?= $selected_lang ?:
+                    1 ?>" class="tw-btn tw-btn-primary" style="background: linear-gradient(135deg, #9147FF, #A970FF);">
+                    <i class="fas fa-magic"></i>
+                    Generate AI Lesson
+                </a>
+            </div>
         </div>
     <?php endif; ?>
 </div>

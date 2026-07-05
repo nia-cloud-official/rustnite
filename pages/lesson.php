@@ -1,6 +1,18 @@
 <?php
 $page_title = "Lesson";
 $lesson_id = (int) ($_GET["id"] ?? 0);
+
+// Handle AI generate lesson
+if (isset($_GET["generate"]) && $lesson_id === 0) {
+    $lang_id = (int) ($_GET["language"] ?? 1);
+    $diff = $_GET["difficulty"] ?? "beginner";
+    $result = generate_ai_lesson($lang_id, $diff);
+    if (!isset($result["error"])) {
+        header("Location: index.php?page=lesson&id=" . $result["lesson_id"]);
+        exit();
+    }
+}
+
 $lesson = get_lesson_by_id($lesson_id);
 
 if (!$lesson) {

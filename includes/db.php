@@ -329,20 +329,7 @@ if ($stmt->fetch()["count"] == 0) {
     ");
 }
 
-// Seed lessons if empty
-$stmt = $pdo->query("SELECT COUNT(*) as count FROM lessons");
-if ($stmt->fetch()["count"] == 0) {
-    $lesson_sql = "INSERT INTO lessons (language_id, title, description, content, code_template, starter_code, expected_output, difficulty, category, xp_reward, order_num) VALUES
-    (1, 'Variables & Data Types', 'Learn how to declare variables and understand Rust\'s type system', 'Variables are fundamental to programming. In Rust, variables are immutable by default.', 'fn main() {\n    // Your code here\n}', 'fn main() {\n    let x = 5;\n    println!(\"x = {}\", x);\n}', 'x = 5', 'beginner', 'basics', 100, 1),
-    (2, 'Variables in Python', 'Learn Python variables - dynamic typing made simple', 'Python variables are dynamically typed and don\'t require explicit type declarations.', '# Write your code here', 'x = 5\nprint(f\"x = {x}\")', 'x = 5', 'beginner', 'basics', 100, 1),
-    (3, 'JavaScript Basics', 'Learn JavaScript variables and data types', 'JavaScript has dynamic typing with let, const, and var declarations.', '// Your code here', 'let x = 5;\nconsole.log(\"x = \" + x);', 'x = 5', 'beginner', 'basics', 100, 1),
-    (4, 'TypeScript Types', 'Master TypeScript\'s type system', 'TypeScript adds static typing to JavaScript for better tooling and error catching.', '// Your code here', 'let x: number = 5;\nconsole.log(\"x = \" + x);', 'x = 5', 'beginner', 'basics', 100, 1),
-    (5, 'Go Variables', 'Learn Go variable declarations', 'Go uses explicit typing with a clean syntax for variable declarations.', '// Your code here', 'package main\nimport \"fmt\"\nfunc main() {\n    x := 5\n    fmt.Printf(\"x = %d\", x)\n}', 'x = 5', 'beginner', 'basics', 100, 1),
-    (6, 'Java Variables', 'Master Java variable declarations', 'Java is statically typed and requires explicit type declarations.', '// Your code here', 'public class Main {\n    public static void main(String[] args) {\n        int x = 5;\n        System.out.println(\"x = \" + x);\n    }\n}', 'x = 5', 'beginner', 'basics', 100, 1),
-    (7, 'C++ Variables', 'Learn C++ variable types', 'C++ is statically typed with multiple integer and floating-point types.', '// Your code here', '#include <iostream>\nusing namespace std;\nint main() {\n    int x = 5;\n    cout << \"x = \" << x << endl;\n    return 0;\n}', 'x = 5', 'beginner', 'basics', 100, 1),
-    (8, 'C Variables', 'Learn C variable declarations', 'C is a statically typed language with a straightforward type system.', '// Your code here', '#include <stdio.h>\nint main() {\n    int x = 5;\n    printf(\"x = %d\", x);\n    return 0;\n}', 'x = 5', 'beginner', 'basics', 100, 1);";
-    $pdo->exec($lesson_sql);
-}
+
 
 // Seed mini-games if empty
 $stmt = $pdo->query("SELECT COUNT(*) as count FROM mini_games");

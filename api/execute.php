@@ -8,12 +8,12 @@ require_once "../includes/functions.php";
 
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST");
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-    http_response_code(405);
-    echo json_encode(["error" => "Method not allowed"]);
+// Handle preflight
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
+    http_response_code(204);
     exit();
 }
 
@@ -24,6 +24,28 @@ if (isset($_GET["test"])) {
         "timestamp" => time(),
         "version" => APP_VERSION,
     ]);
+    exit();
+}
+
+// Handle lint request
+$code = $_GET["code"] ?? ($_POST["code"] ?? "");
+$language_slug = $_GET["language"] ?? ($_POST["language"] ?? "rust");
+
+if (isset($_GET["lint"])) {
+    echo json_encode(["issues" => lint_code($code, $language_slug)]);
+    exit();
+}
+
+// Handle format request
+if (isset($_GET["format"])) {
+    echo json_encode(["formatted" => format_code($code, $language_slug)]);
+    exit();
+}
+
+// Only POST from here on for code execution
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+    http_response_code(405);
+    echo json_encode(["error" => "Method not allowed"]);
     exit();
 }
 
@@ -441,4 +463,135 @@ function simulate_execution($code, $lesson_id, $lang)
         "stderr" => "",
         "execution_time" => "Simulation",
     ];
+}
+
+// ============== LINTING & FORMATTING ==============
+
+function lint_code($code, $language_slug)
+{
+    $issues = [];
+
+    switch ($language_slug) {
+        case "rust":
+            // Check common Rust issues
+            if (!preg_match("/fn\s+main/", $code)) {
+                $issues[] = [
+                    "line" => 0,
+                    "severity" => "error",
+                    "message" => "Missing main function",
+                ];
+            }
+            if (
+                preg_match("/\bprintln!\s*\(/", $code) &&
+                !preg_match("/\bfn\s+main/", $code)
+            ) {
+                $issues[] = [
+                    "line" => 0,
+                    "severity" => "warning",
+                    "message" => "println! should be inside a function",
+                ];
+            }
+            if (preg_match('/=\s*$/', $code, $m, PREG_OFFSET_CAPTURE)) {
+                $pos = $m[0][1];
+                $line = substr_count(substr($code, 0, $pos), "\n") + 1;
+                $issues[] = [
+                    "line" => $line,
+                    "severity" => "warning",
+                    "message" => "Trailing assignment operator",
+                ];
+            }
+            break;
+
+        case "python":
+            if (!preg_match("/print\s*\(/", $code)) {
+                $issues[] = [
+                    "line" => 0,
+                    "severity" => "info",
+                    "message" => "No print() call - you won't see output",
+                ];
+            }
+            if (preg_match("/\binput\s*\(/", $code)) {
+                $issues[] = [
+                    "line" => 0,
+                    "severity" => "warning",
+                    "message" => "input() not supported in sandbox",
+                ];
+            }
+            break;
+
+        case "javascript":
+            if (!preg_match("/console\.log/", $code)) {
+                $issues[] = [
+                    "line" => 0,
+                    "severity" => "info",
+                    "message" => "No console.log() - you won't see output",
+                ];
+            }
+            break;
+    }
+
+    // Common checks for all languages
+    $lines = explode("\n", $code);
+    foreach ($lines as $i => $line) {
+        $lineNum = $i + 1;
+        // Check for trailing whitespace
+        if (preg_match('/\s+$/', $line) && strlen($line) > 0) {
+            $issues[] = [
+                "line" => $lineNum,
+                "severity" => "info",
+                "message" => "Trailing whitespace",
+            ];
+        }
+        // Check for very long lines
+        if (strlen($line) > 120) {
+            $issues[] = [
+                "line" => $lineNum,
+                "severity" => "warning",
+                "message" =>
+                    "Line too long (" . strlen($line) . " > 120 chars)",
+            ];
+        }
+        // Check for tabs vs spaces
+        if (strpos($line, "\t") !== false) {
+            $issues[] = [
+                "line" => $lineNum,
+                "severity" => "info",
+                "message" => "Consider using spaces instead of tabs",
+            ];
+        }
+    }
+
+    return $issues;
+}
+
+function format_code($code, $language_slug)
+{
+    // Basic formatting:
+    $lines = explode("\n", $code);
+    $formatted = [];
+    $indent_level = 0;
+    $indent_size = 4;
+
+    foreach ($lines as $line) {
+        $trimmed = trim($line);
+
+        // De-indent for closing braces/brackets
+        if (preg_match("/^[}\]]/", $trimmed)) {
+            $indent_level = max(0, $indent_level - 1);
+        }
+
+        // Add proper indentation
+        $indent = str_repeat(" ", $indent_level * $indent_size);
+        $formatted[] = $indent . $trimmed;
+
+        // In-indent for opening braces/brackets
+        if (
+            preg_match('/[\{\[]\s*$/', $trimmed) ||
+            preg_match('/:\s*$/', $trimmed)
+        ) {
+            $indent_level++;
+        }
+    }
+
+    return implode("\n", $formatted);
 }
