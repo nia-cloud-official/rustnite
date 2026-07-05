@@ -247,6 +247,28 @@ CREATE TABLE IF NOT EXISTS ai_messages (
 );
 
 -- Daily challenges
+// ============== MIGRATIONS: Add missing columns to existing tables ==============
+// These run after CREATE TABLE IF NOT EXISTS to handle existing tables that don't have new columns
+$migrations = [
+    "ALTER TABLE users ADD COLUMN is_online BOOLEAN DEFAULT FALSE",
+    "ALTER TABLE users ADD COLUMN current_streak INT DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN last_activity_date DATE DEFAULT NULL",
+    "ALTER TABLE users ADD COLUMN longest_streak INT DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN total_xp_earned INT DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN preferred_language INT DEFAULT 1",
+    "ALTER TABLE users ADD COLUMN show_online_status BOOLEAN DEFAULT TRUE",
+    "ALTER TABLE lessons ADD COLUMN language_id INT DEFAULT 1",
+    "ALTER TABLE lessons ADD FOREIGN KEY (language_id) REFERENCES languages(id) ON DELETE SET NULL",
+];
+
+foreach ($migrations as $sql) {
+    try {
+        $pdo->exec($sql);
+    } catch (PDOException $e) {
+        // Column already exists or constraint already added - ignore
+    }
+}
+
 CREATE TABLE IF NOT EXISTS daily_challenges (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
