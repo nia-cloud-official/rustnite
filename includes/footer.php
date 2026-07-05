@@ -1,188 +1,235 @@
-            </div>
-            
-            <!-- Right Content - Hidden for lesson page -->
-            <?php if (($_GET['page'] ?? 'dashboard') !== 'lesson'): ?>
-            <div class="right-content">
-                <div class="character-hero"></div>
-                
-                <!-- Character Info Overlay -->
-                <div>
-                    <?php if (isset($_SESSION['user_id'])): 
-                        $user = get_user_by_id($_SESSION['user_id']);
-                        $progress_in_level = $user['xp'] - (($user['level'] - 1) * XP_PER_LEVEL);
-                        $level_progress = ($progress_in_level / XP_PER_LEVEL) * 100;
-                    ?>
-                        <!-- User Profile Card -->
-                        <div class="content-card" style="background: rgba(26, 26, 26, 0.95); margin-bottom: 32px; padding: 24px;">
-                            <div class="text-muted mb-3" style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Rust Developer</div>
-                            <div class="title-medium" style="font-size: 20px; margin-bottom: 20px;"><?= htmlspecialchars($user['username']) ?></div>
-                            
-                            <div class="flex items-center space-x-4">
-                                <div class="w-14 h-14 bg-orange-500 rounded-full flex items-center justify-center">
-                                    <span class="font-bold text-xl"><?= $user['level'] ?></span>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="text-sm text-muted mb-2">Level <?= $user['level'] ?> Rustacean</div>
-                                    <div class="progress-container" style="height: 6px;">
-                                        <div class="progress-bar" style="width: <?= $level_progress ?>%"></div>
-                                    </div>
-                                    <div class="text-xs text-muted mt-2"><?= $progress_in_level ?>/<?= XP_PER_LEVEL ?> XP</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Statistics Section -->
-                        <div>
-                            <div class="text-muted mb-6" style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Your Statistics</div>
-                            
-                            <?php
-                            $completed_lessons = $pdo->prepare("SELECT COUNT(*) as count FROM user_progress WHERE user_id = ? AND completed = 1");
-                            $completed_lessons->execute([$_SESSION['user_id']]);
-                            $completed_count = $completed_lessons->fetch()['count'];
-                            
-                            $total_lessons = $pdo->prepare("SELECT COUNT(*) as count FROM lessons");
-                            $total_lessons->execute();
-                            $total_count = $total_lessons->fetch()['count'];
-                            
-                            $user_rank = $pdo->prepare("SELECT COUNT(*) + 1 as `user_rank` FROM users WHERE xp > ?");
-                            $user_rank->execute([$user['xp']]);
-                            $rank = $user_rank->fetch()['user_rank'];
-                            ?>
-                            
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="stat-item" style="padding: 20px 16px;">
-                                    <div class="stat-value" style="font-size: 32px; margin-bottom: 4px;"><?= $completed_count ?></div>
-                                    <div class="stat-label" style="font-size: 12px; text-transform: uppercase;">Lessons</div>
-                                </div>
-                                <div class="stat-item" style="padding: 20px 16px;">
-                                    <div class="stat-value" style="font-size: 32px; margin-bottom: 4px;"><?= number_format($user['xp']) ?></div>
-                                    <div class="stat-label" style="font-size: 12px; text-transform: uppercase;">Total XP</div>
-                                </div>
-                                <div class="stat-item" style="padding: 20px 16px;">
-                                    <div class="stat-value" style="font-size: 32px; margin-bottom: 4px;">#<?= $rank ?></div>
-                                    <div class="stat-label" style="font-size: 12px; text-transform: uppercase;">Rank</div>
-                                </div>
-                                <div class="stat-item" style="padding: 20px 16px;">
-                                    <div class="stat-value" style="font-size: 32px; margin-bottom: 4px;"><?= round(($completed_count / max($total_count, 1)) * 100) ?>%</div>
-                                    <div class="stat-label" style="font-size: 12px; text-transform: uppercase;">Progress</div>
-                                </div>
-                            </div>
-                        </div>
-                    <?php else: ?>
-                        <!-- Welcome message for non-logged users -->
-                        <div class="content-card" style="background: rgba(26, 26, 26, 0.95); padding: 32px;">
-                            <div class="title-medium" style="margin-bottom: 16px;">Join the Battle</div>
-                            <div class="text-secondary mb-8" style="line-height: 1.6;">
-                                Master Rust programming through epic challenges and compete with developers worldwide.
-                            </div>
-                            <div class="space-y-4">
-                                <a href="index.php?page=register" class="btn-primary block text-center" style="padding: 14px 24px;">
-                                    Start Your Journey
-                                </a>
-                                <a href="index.php?page=login" class="btn-secondary block text-center" style="padding: 14px 24px;">
-                                    Login
-                                </a>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php endif; ?>
-        </div>
-    </div>
+    </div><!-- .tw-content -->
+</div><!-- .tw-main -->
 
-    <script>
-        // Mobile menu functionality
-        function toggleMobileMenu() {
-            const sidebar = document.getElementById('mobile-sidebar');
-            sidebar.classList.toggle('mobile-open');
+<!-- Mobile Overlay -->
+<div id="mobile-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:99;" onclick="toggleMobileSidebar()"></div>
+
+<!-- ====== GLOBAL JAVASCRIPT ====== -->
+<script>
+// ====== NOTIFICATION SYSTEM ======
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const icons = {
+        success: '<i class="fas fa-check-circle" style="color:#00D95A;"></i>',
+        error: '<i class="fas fa-exclamation-circle" style="color:#E9197B;"></i>',
+        info: '<i class="fas fa-info-circle" style="color:#9147FF;"></i>'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        ${icons[type] || icons.info}
+        <span style="flex:1;">${message}</span>
+        <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#ADADB8;cursor:pointer;font-size:16px;">&times;</button>
+    `;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// ====== CONFETTI SYSTEM ======
+function fireConfetti(count = 50) {
+    const colors = ['#9147FF', '#E9197B', '#00D95A', '#FF6B35', '#A970FF', '#FFD700'];
+
+    for (let i = 0; i < count; i++) {
+        const piece = document.createElement('div');
+        piece.className = 'confetti-piece';
+        piece.style.left = Math.random() * 100 + 'vw';
+        piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.width = (Math.random() * 8 + 4) + 'px';
+        piece.style.height = (Math.random() * 8 + 4) + 'px';
+        piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+        piece.style.animationDuration = (Math.random() * 2 + 2) + 's';
+        piece.style.animationDelay = (Math.random() * 0.5) + 's';
+
+        document.body.appendChild(piece);
+
+        setTimeout(() => piece.remove(), 4000);
+    }
+}
+
+// ====== MOBILE SIDEBAR ======
+function toggleMobileSidebar() {
+    const sidebar = document.getElementById('main-sidebar');
+    const overlay = document.getElementById('mobile-overlay');
+
+    if (sidebar.classList.contains('mobile-open')) {
+        sidebar.classList.remove('mobile-open');
+        overlay.style.display = 'none';
+    } else {
+        sidebar.classList.add('mobile-open');
+        overlay.style.display = 'block';
+    }
+}
+
+// Close sidebar on nav click (mobile)
+document.querySelectorAll('.tw-nav-item').forEach(link => {
+    link.addEventListener('click', function() {
+        if (window.innerWidth <= 768) {
+            toggleMobileSidebar();
         }
-        
-        // Close mobile menu when clicking outside
-        document.addEventListener('click', function(event) {
-            const sidebar = document.getElementById('mobile-sidebar');
-            const toggle = document.querySelector('.mobile-menu-toggle');
-            
-            if (sidebar && toggle && !sidebar.contains(event.target) && !toggle.contains(event.target)) {
-                sidebar.classList.remove('mobile-open');
+    });
+});
+
+// ====== PARTICLES BACKGROUND ======
+(function initParticles() {
+    const canvas = document.getElementById('particles-canvas');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let mouseX = 0;
+    let mouseY = 0;
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+
+    resize();
+    window.addEventListener('resize', resize);
+
+    class Particle {
+        constructor() {
+            this.reset();
+        }
+
+        reset() {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.size = Math.random() * 2 + 0.5;
+            this.speedX = (Math.random() - 0.5) * 0.5;
+            this.speedY = (Math.random() - 0.5) * 0.5;
+            this.opacity = Math.random() * 0.5 + 0.1;
+            this.pulse = Math.random() * Math.PI * 2;
+        }
+
+        update() {
+            this.pulse += 0.01;
+            this.x += this.speedX + (mouseX - canvas.width/2) * 0.0001;
+            this.y += this.speedY + (mouseY - canvas.height/2) * 0.0001;
+            this.currentOpacity = this.opacity * (0.5 + 0.5 * Math.sin(this.pulse));
+
+            if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                this.reset();
+            }
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(145, 71, 255, ${this.currentOpacity})`;
+            ctx.fill();
+        }
+    }
+
+    for (let i = 0; i < 80; i++) {
+        particles.push(new Particle());
+    }
+
+    document.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+    });
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw connections
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 150) {
+                    ctx.beginPath();
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.strokeStyle = `rgba(145, 71, 255, ${0.1 * (1 - dist/150)})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        particles.forEach(p => {
+            p.update();
+            p.draw();
+        });
+
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+})();
+
+// ====== GLOBAL SEARCH ======
+const searchInput = document.getElementById('global-search');
+if (searchInput) {
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const query = this.value.trim();
+            if (query) {
+                window.location.href = 'index.php?page=lessons&search=' + encodeURIComponent(query);
+            }
+        }
+    });
+}
+
+// ====== LIVE XP UPDATES ======
+function updateXPBar(newXP, newLevel) {
+    const xpBar = document.querySelector('.xp-bar');
+    const levelDisplay = document.querySelector('.tw-user-info .xp');
+    if (!xpBar || !levelDisplay) return;
+
+    const xpPerLevel = <?= XP_PER_LEVEL ?>;
+    const currentLevelXp = (newLevel - 1) * xpPerLevel;
+    const progress = ((newXP - currentLevelXp) / (newLevel * xpPerLevel - currentLevelXp)) * 100;
+
+    xpBar.style.width = Math.min(100, Math.max(0, progress)) + '%';
+    levelDisplay.textContent = `Level ${newLevel} · ${newXP.toLocaleString()} XP`;
+}
+
+// ====== INTERACTIVE ANIMATIONS ======
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate cards on scroll
+    const cards = document.querySelectorAll('.tw-card');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
             }
         });
-        
-        // Close mobile menu when navigating
-        document.querySelectorAll('.sidebar a').forEach(link => {
-            link.addEventListener('click', function() {
-                const sidebar = document.getElementById('mobile-sidebar');
-                if (sidebar) {
-                    sidebar.classList.remove('mobile-open');
-                }
-            });
-        });
-        
-        // Handle window resize
-        window.addEventListener('resize', function() {
-            if (window.innerWidth > 768) {
-                const sidebar = document.getElementById('mobile-sidebar');
-                if (sidebar) {
-                    sidebar.classList.remove('mobile-open');
-                }
-            }
-        });
+    }, { threshold: 0.1 });
 
-        // Enhanced notifications
-        function showNotification(message, type = 'success') {
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 100px;
-                background: ${type === 'success' ? '#FF6B35' : '#DC2626'};
-                color: white;
-                padding: 12px 20px;
-                border-radius: 8px;
-                font-weight: 600;
-                z-index: 1000;
-                transform: translateX(100%);
-                transition: transform 0.3s ease;
-            `;
-            notification.textContent = message;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.transform = 'translateX(0)';
-            }, 100);
-            
-            setTimeout(() => {
-                notification.style.transform = 'translateX(100%)';
-                setTimeout(() => notification.remove(), 300);
-            }, 4000);
-        }
+    cards.forEach(card => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = 'all 0.5s ease-out';
+        observer.observe(card);
+    });
+});
 
-        // Sidebar icon click handlers
-        document.querySelectorAll('.sidebar-icon a').forEach(link => {
-            link.addEventListener('click', function(e) {
-                // Remove active class from all icons
-                document.querySelectorAll('.sidebar-icon').forEach(icon => {
-                    icon.classList.remove('active');
-                });
-                
-                // Add active class to clicked icon's parent
-                this.parentElement.classList.add('active');
-            });
-        });
+// ====== TOGGLE NOTIFICATIONS ======
+function toggleNotifications() {
+    // Placeholder - will be implemented with a dropdown
+    showToast('Notifications coming soon!', 'info');
+}
 
-        // Search functionality
-        const searchInput = document.querySelector('.search-input');
-        if (searchInput) {
-            searchInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    const query = this.value.trim();
-                    if (query) {
-                        // Implement search functionality
-                        console.log('Searching for:', query);
-                    }
-                }
-            });
-        }
-    </script>
+// ====== CONSOLE EASTER EGG ======
+console.log('%c🦀 Rustnite v<?= APP_VERSION ?>', 'font-size:24px; font-weight:bold; color:#9147FF;');
+console.log('%cBattle-Royale Coding Arena', 'font-size:14px; color:#ADADB8;');
+console.log('%c🚀 Let\'s code like a legend!', 'font-size:12px; color:#00D95A;');
+</script>
 </body>
 </html>
