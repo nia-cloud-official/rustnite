@@ -309,10 +309,95 @@ if ($stmt->fetch()["count"] == 0) {
 // Seed mini-games if empty
 $stmt = $pdo->query("SELECT COUNT(*) as count FROM mini_games");
 if ($stmt->fetch()["count"] == 0) {
-    $pdo->exec("
-        INSERT INTO mini_games (title, description, type, difficulty, game_data, xp_reward) VALUES
-        ('Speed Syntax', 'Type the correct syntax as fast as you can!', 'syntax_speed', 'beginner', '{\"time_limit\":30,\"questions\":[{\"prompt\":\"Print to console in Python\",\"answer\":\"print(\\\"Hello\\\")\"},{\"prompt\":\"Declare a variable in Rust\",\"answer\":\"let x = 5\"},{\"prompt\":\"For loop in JavaScript\",\"answer\":\"for(let i=0;i<10;i++)\"}]}', 100),
-        ('Bug Hunt', 'Find and fix the bugs in this code!', 'bug_hunt', 'intermediate', '{\"time_limit\":120,\"bugs\":[{\"code\":\"prnt(\\\"Hello\\\")\",\"fix\":\"print(\\\"Hello\\\")\",\"hint\":\"Check the function name\"},{\"code\":\"let x = 5\\nx = 6\",\"fix\":\"let mut x = 5\\nx = 6\",\"hint\":\"Variable needs to be mutable\"}]}', 200),
-        ('Output Prediction', 'What does this code output?', 'output_prediction', 'intermediate', '{\"questions\":[{\"code\":\"print(2 + 3)\",\"options\":[\"5\",\"23\",\"Error\",\"None\"],\"correct\":0},{\"code\":\"console.log(typeof 42)\",\"options\":[\"number\",\"string\",\"object\",\"undefined\"],\"correct\":0}]}', 150);
-    ");
+    $games = [
+        [
+            "title" => "Speed Syntax",
+            "description" => "Type the correct syntax as fast as you can!",
+            "type" => "syntax_speed",
+            "difficulty" => "beginner",
+            "game_data" => json_encode([
+                "time_limit" => 30,
+                "questions" => [
+                    [
+                        "prompt" => "Print to console in Python",
+                        "answer" => 'print("Hello")',
+                        "hint" => "Use the print function",
+                    ],
+                    [
+                        "prompt" => "Declare a variable in Rust",
+                        "answer" => "let x = 5",
+                        "hint" => "Use let keyword",
+                    ],
+                    [
+                        "prompt" => "For loop in JavaScript",
+                        "answer" => "for(let i=0;i<10;i++)",
+                        "hint" => "Use for keyword",
+                    ],
+                ],
+            ]),
+            "xp_reward" => 100,
+        ],
+        [
+            "title" => "Bug Hunt",
+            "description" => "Find and fix the bugs in this code!",
+            "type" => "bug_hunt",
+            "difficulty" => "intermediate",
+            "game_data" => json_encode([
+                "time_limit" => 120,
+                "bugs" => [
+                    [
+                        "code" => 'prnt("Hello")',
+                        "fix" => 'print("Hello")',
+                        "hint" => "Check the function name",
+                    ],
+                    [
+                        "code" => 'let x = 5\nx = 6',
+                        "fix" => 'let mut x = 5\nx = 6',
+                        "hint" => "Variable needs to be mutable",
+                    ],
+                ],
+            ]),
+            "xp_reward" => 200,
+        ],
+        [
+            "title" => "Output Prediction",
+            "description" => "What does this code output?",
+            "type" => "output_prediction",
+            "difficulty" => "intermediate",
+            "game_data" => json_encode([
+                "questions" => [
+                    [
+                        "code" => "print(2 + 3)",
+                        "options" => ["5", "23", "Error", "None"],
+                        "correct" => 0,
+                    ],
+                    [
+                        "code" => "console.log(typeof 42)",
+                        "options" => [
+                            "number",
+                            "string",
+                            "object",
+                            "undefined",
+                        ],
+                        "correct" => 0,
+                    ],
+                ],
+            ]),
+            "xp_reward" => 150,
+        ],
+    ];
+
+    $stmt = $pdo->prepare(
+        "INSERT INTO mini_games (title, description, type, difficulty, game_data, xp_reward) VALUES (?, ?, ?, ?, ?, ?)",
+    );
+    foreach ($games as $game) {
+        $stmt->execute([
+            $game["title"],
+            $game["description"],
+            $game["type"],
+            $game["difficulty"],
+            $game["game_data"],
+            $game["xp_reward"],
+        ]);
+    }
 }
