@@ -18,7 +18,6 @@ $allowed_pages = [
     "donate",
     "logout",
     "battle-royale",
-    "battle-royale-lobby",
     "mini-games",
     "mini-game-play",
     "ai-tutor",
@@ -27,6 +26,7 @@ $allowed_pages = [
 
 if (!in_array($page, $allowed_pages)) {
     header("Location: index.php?page=dashboard");
+    exit();
     exit();
 }
 
@@ -189,7 +189,6 @@ $protected_pages = [
     "leaderboard",
     "profile",
     "battle-royale",
-    "battle-royale-lobby",
     "mini-games",
     "mini-game-play",
     "ai-tutor",
