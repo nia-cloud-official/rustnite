@@ -1,24 +1,31 @@
 <?php
-$page_title = 'Mini-Game';
-$game_id = (int)($_GET['id'] ?? 0);
+$page_title = "Mini-Game";
+$game_id = (int) ($_GET["id"] ?? 0);
 
-$stmt = $pdo->prepare("SELECT * FROM mini_games WHERE id = ? AND is_active = TRUE");
+$stmt = $pdo->prepare(
+    "SELECT * FROM mini_games WHERE id = ? AND is_active = TRUE",
+);
 $stmt->execute([$game_id]);
 $game = $stmt->fetch();
 
 if (!$game) {
-    header('Location: index.php?page=mini-games');
-    exit;
+    header("Location: index.php?page=mini-games");
+    exit();
 }
 
-$game_data = json_decode($game['game_data'], true);
+$game_data = json_decode($game["game_data"], true);
 
 // Handle score submission
 $play_result = null;
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_score'])) {
-    $score = (int)($_POST['score'] ?? 0);
-    $time_taken = (int)($_POST['time_taken'] ?? 0);
-    $play_result = play_mini_game($game_id, $_SESSION['user_id'], $score, $time_taken);
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["submit_score"])) {
+    $score = (int) ($_POST["score"] ?? 0);
+    $time_taken = (int) ($_POST["time_taken"] ?? 0);
+    $play_result = play_mini_game(
+        $game_id,
+        $_SESSION["user_id"],
+        $score,
+        $time_taken,
+    );
 }
 ?>
 <div style="animation: fade-in 0.5s ease-out;">
@@ -27,19 +34,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_score'])) {
             <i class="fas fa-arrow-left"></i>
         </a>
         <div>
-            <h1 class="text-2xl font-bold"><?= htmlspecialchars($game['title']) ?></h1>
-            <p class="text-twitch-muted text-sm"><?= htmlspecialchars($game['description']) ?></p>
+            <h1 class="text-2xl font-bold"><?= htmlspecialchars(
+                $game["title"],
+            ) ?></h1>
+            <p class="text-twitch-muted text-sm"><?= htmlspecialchars(
+                $game["description"],
+            ) ?></p>
         </div>
     </div>
 
-    <?php if ($play_result && $play_result['success']): ?>
+    <?php if ($play_result && $play_result["success"]): ?>
         <div class="tw-card tw-card-body mb-6" style="border-color:rgba(0,217,90,0.3); background:rgba(0,217,90,0.1); text-align:center; padding:40px;">
             <i class="fas fa-trophy" style="font-size:48px; color:#FFD700; margin-bottom:12px;"></i>
             <h2 class="text-2xl font-bold mb-2">Game Complete!</h2>
-            <p class="text-twitch-muted mb-2">Score: <span class="font-bold text-white"><?= $play_result['score'] ?></span></p>
-            <p class="text-twitch-muted mb-4">Time: <span class="font-bold text-white"><?= $play_result['time_taken'] ?>s</span></p>
-            <p class="text-lg font-bold gradient-text">+<?= $play_result['xp_earned'] ?> XP Earned!</p>
-            <?php if ($play_result['xp_earned'] >= 100): ?>
+            <p class="text-twitch-muted mb-2">Score: <span class="font-bold text-white"><?= $play_result[
+                "score"
+            ] ?></span></p>
+            <p class="text-twitch-muted mb-4">Time: <span class="font-bold text-white"><?= $play_result[
+                "time_taken"
+            ] ?>s</span></p>
+            <p class="text-lg font-bold gradient-text">+<?= $play_result[
+                "xp_earned"
+            ] ?> XP Earned!</p>
+            <?php if ($play_result["xp_earned"] >= 100): ?>
                 <script>fireConfetti(80);</script>
             <?php endif; ?>
             <a href="index.php?page=mini-games" class="tw-btn tw-btn-primary mt-4">
@@ -51,12 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_score'])) {
 
     <div class="tw-card">
         <div class="tw-card-body" id="game-area">
-            <?php if ($game['type'] === 'syntax_speed'): ?>
+            <?php if ($game["type"] === "syntax_speed"): ?>
                 <!-- Syntax Speed Game -->
                 <div id="syntax-game">
                     <div class="flex items-center justify-between mb-6">
                         <div class="text-lg font-bold">Score: <span id="score" style="color:#9147FF;">0</span></div>
-                        <div class="text-lg font-bold">Time: <span id="timer" style="color:#E9197B;"><?= $game_data['time_limit'] ?? 30 ?></span>s</div>
+                        <div class="text-lg font-bold">Time: <span id="timer" style="color:#E9197B;"><?= $game_data[
+                            "time_limit"
+                        ] ?? 30 ?></span>s</div>
                         <div class="text-lg font-bold">Level: <span id="level" style="color:#00D95A;">1</span></div>
                     </div>
 
@@ -80,10 +99,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_score'])) {
                 </div>
 
                 <script>
-                const questions = <?= json_encode($game_data['questions'] ?? []) ?>;
+                const questions = <?= json_encode(
+                    $game_data["questions"] ?? [],
+                ) ?>;
                 let currentQuestion = 0;
                 let score = 0;
-                let timeLeft = <?= $game_data['time_limit'] ?? 30 ?>;
+                let timeLeft = <?= $game_data["time_limit"] ?? 30 ?>;
                 let timerInterval = null;
                 let gameActive = false;
                 let level = 1;
@@ -112,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_score'])) {
                     score = 0;
                     currentQuestion = 0;
                     level = 1;
-                    timeLeft = <?= $game_data['time_limit'] ?? 30 ?>;
+                    timeLeft = <?= $game_data["time_limit"] ?? 30 ?>;
                     gameActive = true;
 
                     startBtn.disabled = true;
@@ -183,7 +204,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_score'])) {
                     startBtn.style.opacity = '1';
                     timerEl.style.animation = '';
 
-                    const timeTaken = <?= $game_data['time_limit'] ?? 30 ?> - timeLeft;
+                    const timeTaken = <?= $game_data["time_limit"] ??
+                        30 ?> - timeLeft;
 
                     // Submit score
                     const form = document.createElement('form');
@@ -198,18 +220,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_score'])) {
                 }
                 </script>
 
-            <?php elseif ($game['type'] === 'output_prediction'): ?>
+            <?php elseif ($game["type"] === "output_prediction"): ?>
                 <!-- Output Prediction Game -->
                 <div id="prediction-game">
-                    <?php $questions = $game_data['questions'] ?? []; ?>
+                    <?php $questions = $game_data["questions"] ?? []; ?>
                     <div id="prediction-area">
                         <div class="text-center mb-6">
-                            <p class="text-lg font-bold mb-4">Question <span id="q-num">1</span>/<?= count($questions) ?></p>
-                            <pre id="code-display" class="text-left p-6 bg-twitch-medium rounded-lg border border-twitch-border font-mono text-sm overflow-x-auto" style="min-height:100px;"><?= htmlspecialchars($questions[0]['code'] ?? '') ?></pre>
+                            <p class="text-lg font-bold mb-4">Question <span id="q-num">1</span>/<?= count(
+                                $questions,
+                            ) ?></p>
+                            <pre id="code-display" class="text-left p-6 bg-twitch-medium rounded-lg border border-twitch-border font-mono text-sm overflow-x-auto" style="min-height:100px;"><?= htmlspecialchars(
+                                $questions[0]["code"] ?? "",
+                            ) ?></pre>
                         </div>
 
                         <div id="options" class="grid grid-cols-2 gap-4 mb-6">
-                            <?php foreach (($questions[0]['options'] ?? []) as $i => $opt): ?>
+                            <?php foreach (
+                                $questions[0]["options"] ?? []
+                                as $i => $opt
+                            ): ?>
                                 <button class="tw-card tw-card-body option-btn" data-index="<?= $i ?>" style="text-align:center; cursor:pointer;" onclick="selectOption(this, <?= $i ?>)">
                                     <?= htmlspecialchars($opt) ?>
                                 </button>
@@ -292,6 +321,169 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_score'])) {
                         btn.onclick = () => selectOption(btn, i);
                         optionsDiv.appendChild(btn);
                     });
+                }
+                </script>
+
+            <?php elseif ($game["type"] === "bug_hunt"): ?>
+                <!-- Bug Hunt Game -->
+                <div id="bug-hunt-game">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="text-lg font-bold">Score: <span id="bh-score" style="color:#9147FF;">0</span></div>
+                        <div class="text-lg font-bold">Bugs Fixed: <span id="bh-fixed" style="color:#00D95A;">0</span>/<?= count(
+                            $game_data["bugs"] ?? [],
+                        ) ?></div>
+                        <div class="text-lg font-bold">Time: <span id="bh-timer" style="color:#E9197B;"><?= $game_data[
+                            "time_limit"
+                        ] ?? 120 ?></span>s</div>
+                    </div>
+
+                    <div class="text-center mb-6">
+                        <p class="text-sm text-twitch-muted mb-2">Find and fix the bug in this code:</p>
+                        <div id="bug-code" class="text-left p-6 bg-twitch-medium rounded-lg border border-twitch-border font-mono text-sm overflow-x-auto" style="min-height:80px; white-space:pre-wrap;">
+                            Loading...
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-twitch-muted mb-2">Type the fixed code:</label>
+                        <textarea id="bug-fix-input" class="w-full p-4 bg-twitch-medium border border-twitch-border rounded-lg text-twitch-text font-mono text-sm focus:outline-none focus:border-twitch-purple" rows="4" placeholder="Enter the corrected code..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button id="bh-start-btn" onclick="startBugHunt()" class="tw-btn tw-btn-primary tw-btn-lg">
+                            <i class="fas fa-play"></i> Start Hunt
+                        </button>
+                        <button id="bh-check-btn" onclick="checkBugFix()" class="tw-btn tw-btn-secondary tw-btn-lg" style="display:none;">
+                            <i class="fas fa-check"></i> Check Fix
+                        </button>
+                        <div id="bh-result" class="text-sm font-bold"></div>
+                    </div>
+                </div>
+
+                <script>
+                const bugs = <?= json_encode($game_data["bugs"] ?? []) ?>;
+                let currentBug = 0;
+                let bhScore = 0;
+                let bhFixed = 0;
+                let bhTimeLeft = <?= $game_data["time_limit"] ?? 120 ?>;
+                let bhTimerInterval = null;
+                let bhGameActive = false;
+
+                const bugCodeEl = document.getElementById('bug-code');
+                const bugFixInput = document.getElementById('bug-fix-input');
+                const bhScoreEl = document.getElementById('bh-score');
+                const bhFixedEl = document.getElementById('bh-fixed');
+                const bhTimerEl = document.getElementById('bh-timer');
+                const bhResultEl = document.getElementById('bh-result');
+                const bhStartBtn = document.getElementById('bh-start-btn');
+                const bhCheckBtn = document.getElementById('bh-check-btn');
+
+                bugFixInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter' && e.ctrlKey && bhGameActive) {
+                        checkBugFix();
+                    }
+                });
+
+                function startBugHunt() {
+                    if (bugs.length === 0) {
+                        bhResultEl.textContent = 'No bugs available!';
+                        bhResultEl.style.color = '#E9197B';
+                        return;
+                    }
+
+                    bhScore = 0;
+                    currentBug = 0;
+                    bhFixed = 0;
+                    bhTimeLeft = <?= $game_data["time_limit"] ?? 120 ?>;
+                    bhGameActive = true;
+
+                    bhStartBtn.disabled = true;
+                    bhStartBtn.style.opacity = '0.5';
+                    bhCheckBtn.style.display = 'flex';
+                    bugFixInput.disabled = false;
+                    bugFixInput.focus();
+
+                    bhTimerInterval = setInterval(() => {
+                        bhTimeLeft--;
+                        bhTimerEl.textContent = bhTimeLeft;
+
+                        if (bhTimeLeft <= 0) {
+                            endBugHunt();
+                        }
+
+                        if (bhTimeLeft <= 10) {
+                            bhTimerEl.style.color = '#E9197B';
+                            bhTimerEl.style.animation = 'pulse-ring 1s infinite';
+                        }
+                    }, 1000);
+
+                    showBug();
+                }
+
+                function showBug() {
+                    if (currentBug >= bugs.length) {
+                        endBugHunt();
+                        return;
+                    }
+
+                    const bug = bugs[currentBug];
+                    bugCodeEl.textContent = bug.code || 'No code provided';
+                    bugFixInput.value = '';
+                    bugFixInput.focus();
+                    bhResultEl.textContent = '';
+                }
+
+                function checkBugFix() {
+                    const fix = bugFixInput.value.trim();
+                    const bug = bugs[currentBug];
+                    const correct = (bug.fix || '').trim();
+
+                    if (fix.toLowerCase() === correct.toLowerCase()) {
+                        const points = 50;
+                        bhScore += points;
+                        bhFixed++;
+                        bhScoreEl.textContent = bhScore;
+                        bhFixedEl.textContent = bhFixed;
+                        bhResultEl.textContent = '\u2705 Correct! +' + points;
+                        bhResultEl.style.color = '#00D95A';
+                        currentBug++;
+                        setTimeout(showBug, 800);
+                    } else {
+                        bhResultEl.textContent = '\u274c Not quite! Hint: ' + (bug.hint || 'Look carefully at the syntax');
+                        bhResultEl.style.color = '#E9197B';
+                        bugFixInput.value = '';
+                        bugFixInput.focus();
+                    }
+                }
+
+                function endBugHunt() {
+                    bhGameActive = false;
+                    clearInterval(bhTimerInterval);
+                    bugFixInput.disabled = true;
+                    bhCheckBtn.style.display = 'none';
+                    bhStartBtn.disabled = false;
+                    bhStartBtn.style.opacity = '1';
+                    bhTimerEl.style.animation = '';
+
+                    const timeTaken = <?= $game_data["time_limit"] ??
+                        120 ?> - bhTimeLeft;
+
+                    // Bonus points for fixing all bugs
+                    if (bhFixed >= bugs.length) {
+                        bhScore += 200;
+                        bhResultEl.textContent = '\uD83C\uDFC6 All bugs fixed! +200 bonus!';
+                        bhResultEl.style.color = '#FFD700';
+                    }
+
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.innerHTML = `
+                        <input type="hidden" name="submit_score" value="1">
+                        <input type="hidden" name="score" value="${bhScore}">
+                        <input type="hidden" name="time_taken" value="${timeTaken}">
+                    `;
+                    document.body.appendChild(form);
+                    form.submit();
                 }
                 </script>
 
