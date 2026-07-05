@@ -1,458 +1,414 @@
 <?php
-$user = get_user_by_id($_SESSION['user_id']);
-$progress = get_user_progress($_SESSION['user_id']);
-$completed_lessons = array_filter($progress, fn($lesson) => $lesson['completed']);
-$total_lessons = count($progress);
+$page_title = "Dashboard";
+$user = get_user_by_id($_SESSION["user_id"]);
+$languages = get_languages();
+$active_matches = get_active_br_matches();
+$games = get_mini_games();
+$chats = get_ai_chats($_SESSION["user_id"]);
+$notifications = get_user_notifications($_SESSION["user_id"], 5);
 
-// Get user statistics
+// Get total stats
 $stmt = $pdo->prepare("
-    SELECT 
-        COUNT(CASE WHEN up.completed = 1 THEN 1 END) as completed_count,
-        COUNT(*) as total_available,
-        SUM(CASE WHEN up.completed = 1 THEN l.xp_reward ELSE 0 END) as total_xp_earned,
-        AVG(CASE WHEN up.completed = 1 THEN l.xp_reward ELSE NULL END) as avg_xp_per_lesson
-    FROM lessons l 
+    SELECT
+        COUNT(DISTINCT CASE WHEN up.completed = 1 THEN up.lesson_id END) as completed_lessons,
+        COUNT(DISTINCT l.id) as total_lessons,
+        COUNT(DISTINCT l.language_id) as languages_used,
+        COUNT(DISTINCT CASE WHEN up.completed = 1 THEN l.language_id END) as languages_completed
+    FROM lessons l
     LEFT JOIN user_progress up ON l.id = up.lesson_id AND up.user_id = ?
 ");
-$stmt->execute([$_SESSION['user_id']]);
+$stmt->execute([$_SESSION["user_id"]]);
 $stats = $stmt->fetch();
 
-// Get user rank
-$stmt = $pdo->prepare("SELECT COUNT(*) + 1 as `user_rank` FROM users WHERE xp > ?");
-$stmt->execute([$user['xp']]);
-$user_rank = $stmt->fetch()['user_rank'];
-
-// Get recent activity
-$stmt = $pdo->prepare("
-    SELECT l.title, l.difficulty, l.xp_reward, up.completed_at 
-    FROM user_progress up 
-    JOIN lessons l ON up.lesson_id = l.id 
-    WHERE up.user_id = ? AND up.completed = 1 
-    ORDER BY up.completed_at DESC 
-    LIMIT 5
-");
-$stmt->execute([$_SESSION['user_id']]);
-$recent_activity = $stmt->fetchAll();
-
-// Get learning streak
-$stmt = $pdo->prepare("
-    SELECT DATE(completed_at) as completion_date 
-    FROM user_progress 
-    WHERE user_id = ? AND completed = 1 
-    ORDER BY completed_at DESC
-");
-$stmt->execute([$_SESSION['user_id']]);
-$completion_dates = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-$current_streak = 0;
-$today = new DateTime();
-$yesterday = new DateTime('-1 day');
-
-if (!empty($completion_dates)) {
-    $last_completion = new DateTime($completion_dates[0]);
-    
-    // Check if completed today or yesterday
-    if ($last_completion->format('Y-m-d') === $today->format('Y-m-d') || 
-        $last_completion->format('Y-m-d') === $yesterday->format('Y-m-d')) {
-        
-        $current_streak = 1;
-        $check_date = clone $last_completion;
-        
-        // Count consecutive days
-        for ($i = 1; $i < count($completion_dates); $i++) {
-            $prev_date = new DateTime($completion_dates[$i]);
-            $check_date->modify('-1 day');
-            
-            if ($prev_date->format('Y-m-d') === $check_date->format('Y-m-d')) {
-                $current_streak++;
-            } else {
-                break;
-            }
-        }
-    }
+// Get per-language progress
+$lang_progress = [];
+foreach ($languages as $lang) {
+    $stmt = $pdo->prepare("
+        SELECT
+            COUNT(*) as total,
+            SUM(CASE WHEN up.completed = 1 THEN 1 ELSE 0 END) as completed
+        FROM lessons l
+        LEFT JOIN user_progress up ON l.id = up.lesson_id AND up.user_id = ?
+        WHERE l.language_id = ?
+    ");
+    $stmt->execute([$_SESSION["user_id"], $lang["id"]]);
+    $lang_progress[$lang["id"]] = $stmt->fetch();
 }
 
-// Handle filter changes
-$filter = $_GET['filter'] ?? 'popular';
-$valid_filters = ['popular', 'recent', 'difficulty'];
-if (!in_array($filter, $valid_filters)) {
-    $filter = 'popular';
-}
+// User rank
+$stmt = $pdo->prepare(
+    "SELECT COUNT(*) + 1 as user_rank FROM users WHERE xp > ?",
+);
+$stmt->execute([$user["xp"]]);
+$user_rank = $stmt->fetch()["user_rank"];
 ?>
+<div style="animation: fade-in 0.5s ease-out;">
+    <!-- Welcome + Quick Stats -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Welcome Card -->
+        <div class="tw-card tw-card-body lg:col-span-2" style="background: linear-gradient(135deg, rgba(145,71,255,0.1), rgba(233,25,123,0.05)); border-color: rgba(145,71,255,0.2);">
+            <div class="flex items-center gap-4">
+                <div class="tw-avatar online" style="width:56px; height:56px; font-size:24px;"><?= get_avatar_letter(
+                    $user["username"],
+                ) ?></div>
+                <div>
+                    <h1 class="text-2xl font-bold">Welcome back, <?= htmlspecialchars(
+                        $user["username"],
+                    ) ?>!</h1>
+                    <p class="text-twitch-muted text-sm">
+                        <?php
+                        $hour = date("H");
+                        if ($hour < 12) {
+                            echo "Good morning! ☀️";
+                        } elseif ($hour < 18) {
+                            echo "Good afternoon! 🌤️";
+                        } else {
+                            echo "Good evening! 🌙";
+                        }
+                        ?>
+                        Ready to write some code?
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 mt-4 text-sm">
+                <span class="flex items-center gap-1"><i class="fas fa-fire" style="color:#FF6B35;"></i> <?= $user[
+                    "current_streak"
+                ] ?> day streak</span>
+                <span class="flex items-center gap-1"><i class="fas fa-ranking-star" style="color:#A970FF;"></i> Rank #<?= $user_rank ?></span>
+                <span class="flex items-center gap-1"><i class="fas fa-layer-group" style="color:#00D95A;"></i> Level <?= $user[
+                    "level"
+                ] ?></span>
+            </div>
+        </div>
 
-<!-- Main Dashboard Content -->
-<div class="title-large">Rustnite</div>
-<div class="text-secondary mb-8">
-    Master Rust programming through battle-tested challenges based on the official Rust Book. 
-    Build real projects and compete with developers worldwide.
-</div>
+        <!-- Language Progress -->
+        <div class="tw-card tw-card-body">
+            <div class="text-sm font-bold text-twitch-muted uppercase tracking-wider mb-3">Languages</div>
+            <div class="space-y-2">
+                <?php foreach (array_slice($languages, 0, 4) as $lang):
 
-<!-- Filter Buttons -->
-<div class="flex items-center space-x-4 mb-6">
-    <a href="?page=dashboard&filter=popular" 
-       class="<?= $filter === 'popular' ? 'btn-primary' : 'btn-secondary' ?>">
-        <i class="fas fa-fire mr-2"></i>
-        Popular
-    </a>
-    <a href="?page=dashboard&filter=recent" 
-       class="<?= $filter === 'recent' ? 'btn-primary' : 'btn-secondary' ?>">
-        <i class="fas fa-clock mr-2"></i>
-        Recent
-    </a>
-    <a href="?page=dashboard&filter=difficulty" 
-       class="<?= $filter === 'difficulty' ? 'btn-primary' : 'btn-secondary' ?>">
-        <i class="fas fa-chart-line mr-2"></i>
-        By Difficulty
-    </a>
-</div>
-
-<!-- Main Content Card -->
-<div class="content-card">
-    <div class="flex items-start justify-between mb-6">
-        <div class="flex-1">
-            <div class="title-medium">Rust Programming Journey</div>
-            <div class="text-secondary mb-6">
-                Learn Rust through hands-on coding challenges, build real-world projects like CLI tools, 
-                web servers, and system programs. Master memory safety, ownership, and concurrency.
-            </div>
-            
-            <div class="flex items-center space-x-4 mb-6">
-                <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-                        <i class="fas fa-cog text-sm"></i>
-                    </div>
-                    <span class="text-sm text-muted">Systems Programming</span>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                        <i class="fas fa-server text-sm"></i>
-                    </div>
-                    <span class="text-sm text-muted">Backend Development</span>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                        <i class="fas fa-globe text-sm"></i>
-                    </div>
-                    <span class="text-sm text-muted">Web Applications</span>
-                </div>
-            </div>
-            
-            <a href="index.php?page=lessons" class="btn-primary">
-                Start Learning <i class="fas fa-play ml-2"></i>
-            </a>
-        </div>
-        
-        <!-- Rust Logo/Icon Preview -->
-        <div class="w-64 h-48 bg-gradient-to-br from-orange-500/20 to-transparent rounded-lg flex items-center justify-center">
-            <div class="text-center">
-                <i class="fas fa-cog text-6xl text-orange-500 mb-4 animate-spin" style="animation-duration: 8s;"></i>
-                <div class="text-orange-500 font-bold text-xl">RUST</div>
-                <div class="text-sm text-muted mt-2">Systems Programming</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Quick Stats Overview -->
-<div class="grid grid-cols-3 gap-6 mb-8">
-    <div class="content-card text-center">
-        <div class="text-3xl font-bold text-green-400 mb-2"><?= $stats['completed_count'] ?></div>
-        <div class="text-sm text-muted">Lessons Completed</div>
-    </div>
-    <div class="content-card text-center">
-        <div class="text-3xl font-bold text-blue-400 mb-2"><?= round(($stats['completed_count'] / max($stats['total_available'], 1)) * 100) ?>%</div>
-        <div class="text-sm text-muted">Progress</div>
-    </div>
-    <div class="content-card text-center">
-        <div class="text-3xl font-bold text-orange-400 mb-2"><?= $current_streak ?></div>
-        <div class="text-sm text-muted">Day Streak</div>
-    </div>
-</div>
-
-<!-- Learning Paths -->
-<div class="mt-8">
-    <div class="flex items-center justify-between mb-6">
-        <div class="title-medium">Learning Paths</div>
-        <a href="index.php?page=lessons" class="text-orange-400 hover:text-orange-300 text-sm font-medium">
-            View All <i class="fas fa-arrow-right ml-1"></i>
-        </a>
-    </div>
-    
-    <div class="grid grid-cols-3 gap-6">
-        <!-- Fundamentals Path -->
-        <div class="content-card hover:border-green-500/50 transition-all cursor-pointer" onclick="window.location.href='index.php?page=lessons&difficulty=beginner'">
-            <div class="text-center">
-                <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                    <i class="fas fa-book text-2xl text-white"></i>
-                </div>
-                <div class="font-bold text-lg mb-2">FUNDAMENTALS</div>
-                <div class="text-muted text-sm mb-4">Basic Rust Concepts</div>
-                
-                <?php
-                $beginner_count = $pdo->prepare("SELECT COUNT(*) as count FROM lessons WHERE difficulty = 'beginner'");
-                $beginner_count->execute();
-                $beginner_total = $beginner_count->fetch()['count'];
-                
-                $beginner_completed = $pdo->prepare("
-                    SELECT COUNT(*) as count FROM user_progress up 
-                    JOIN lessons l ON up.lesson_id = l.id 
-                    WHERE up.user_id = ? AND up.completed = 1 AND l.difficulty = 'beginner'
-                ");
-                $beginner_completed->execute([$_SESSION['user_id']]);
-                $beginner_done = $beginner_completed->fetch()['count'];
-                ?>
-                
-                <div class="text-xs text-green-400"><?= $beginner_done ?>/<?= $beginner_total ?> completed</div>
-                <div class="w-full bg-gray-700 rounded-full h-2 mt-2">
-                    <div class="bg-green-500 h-2 rounded-full" style="width: <?= $beginner_total > 0 ? ($beginner_done / $beginner_total) * 100 : 0 ?>%"></div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Intermediate Path -->
-        <div class="content-card hover:border-blue-500/50 transition-all cursor-pointer" onclick="window.location.href='index.php?page=lessons&difficulty=intermediate'">
-            <div class="text-center">
-                <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                    <i class="fas fa-microchip text-2xl text-white"></i>
-                </div>
-                <div class="font-bold text-lg mb-2">SYSTEMS</div>
-                <div class="text-muted text-sm mb-4">Low-level Programming</div>
-                
-                <?php
-                $intermediate_count = $pdo->prepare("SELECT COUNT(*) as count FROM lessons WHERE difficulty = 'intermediate'");
-                $intermediate_count->execute();
-                $intermediate_total = $intermediate_count->fetch()['count'];
-                
-                $intermediate_completed = $pdo->prepare("
-                    SELECT COUNT(*) as count FROM user_progress up 
-                    JOIN lessons l ON up.lesson_id = l.id 
-                    WHERE up.user_id = ? AND up.completed = 1 AND l.difficulty = 'intermediate'
-                ");
-                $intermediate_completed->execute([$_SESSION['user_id']]);
-                $intermediate_done = $intermediate_completed->fetch()['count'];
-                ?>
-                
-                <div class="text-xs text-blue-400"><?= $intermediate_done ?>/<?= $intermediate_total ?> completed</div>
-                <div class="w-full bg-gray-700 rounded-full h-2 mt-2">
-                    <div class="bg-blue-500 h-2 rounded-full" style="width: <?= $intermediate_total > 0 ? ($intermediate_done / $intermediate_total) * 100 : 0 ?>%"></div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Advanced Path -->
-        <div class="content-card hover:border-orange-500/50 transition-all cursor-pointer" onclick="window.location.href='index.php?page=lessons&difficulty=advanced'">
-            <div class="text-center">
-                <div class="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                    <i class="fas fa-globe text-2xl text-white"></i>
-                </div>
-                <div class="font-bold text-lg mb-2">ADVANCED</div>
-                <div class="text-muted text-sm mb-4">Complex Applications</div>
-                
-                <?php
-                $advanced_count = $pdo->prepare("SELECT COUNT(*) as count FROM lessons WHERE difficulty = 'advanced'");
-                $advanced_count->execute();
-                $advanced_total = $advanced_count->fetch()['count'];
-                
-                $advanced_completed = $pdo->prepare("
-                    SELECT COUNT(*) as count FROM user_progress up 
-                    JOIN lessons l ON up.lesson_id = l.id 
-                    WHERE up.user_id = ? AND up.completed = 1 AND l.difficulty = 'advanced'
-                ");
-                $advanced_completed->execute([$_SESSION['user_id']]);
-                $advanced_done = $advanced_completed->fetch()['count'];
-                ?>
-                
-                <div class="text-xs text-orange-400"><?= $advanced_done ?>/<?= $advanced_total ?> completed</div>
-                <div class="w-full bg-gray-700 rounded-full h-2 mt-2">
-                    <div class="bg-orange-500 h-2 rounded-full" style="width: <?= $advanced_total > 0 ? ($advanced_done / $advanced_total) * 100 : 0 ?>%"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Statistics Section -->
-<div class="mt-8">
-    <div class="title-medium mb-6">Your Statistics</div>
-    
-    <div class="grid grid-cols-3 gap-6">
-        <!-- Total Learning Time -->
-        <div class="stat-item">
-            <div class="flex items-center justify-between mb-4">
-                <div class="text-muted">Total Learning Time</div>
-                <div class="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-clock text-white text-sm"></i>
-                </div>
-            </div>
-            <div class="stat-value"><?= number_format(($stats['completed_count'] * 45) / 60, 1) ?>h</div>
-            <div class="text-xs text-green-400 mt-1">+<?= $stats['completed_count'] > 0 ? round(($stats['completed_count'] / 7) * 100) : 0 ?>% this week</div>
-        </div>
-        
-        <!-- Problems Solved -->
-        <div class="stat-item">
-            <div class="flex items-center justify-between mb-4">
-                <div class="text-muted">Problems Solved</div>
-                <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-puzzle-piece text-white text-sm"></i>
-                </div>
-            </div>
-            <div class="stat-value"><?= $stats['completed_count'] ?></div>
-            <div class="text-xs text-blue-400 mt-1">Avg <?= $stats['avg_xp_per_lesson'] ? round($stats['avg_xp_per_lesson']) : 0 ?> XP each</div>
-        </div>
-        
-        <!-- Global Rank -->
-        <div class="stat-item">
-            <div class="flex items-center justify-between mb-4">
-                <div class="text-muted">Global Rank</div>
-                <div class="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-trophy text-white text-sm"></i>
-                </div>
-            </div>
-            <div class="stat-value">#<?= $user_rank ?></div>
-            <div class="text-xs text-purple-400 mt-1">
-                <?php
-                $total_users = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
-                $percentile = round((($total_users - $user_rank + 1) / $total_users) * 100);
-                echo "Top {$percentile}%";
-                ?>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Continue Learning -->
-<div class="mt-8">
-    <div class="flex items-center justify-between mb-6">
-        <div class="title-medium">Continue Learning</div>
-        <div class="flex items-center space-x-2">
-            <span class="text-sm text-muted">Streak: <?= $current_streak ?> days</span>
-            <div class="text-orange-400">🔥</div>
-        </div>
-    </div>
-    
-    <div class="space-y-4">
-        <?php 
-        // Get next lessons based on filter
-        switch ($filter) {
-            case 'recent':
-                $lesson_query = "
-                    SELECT l.*, up.completed, up.completed_at 
-                    FROM lessons l 
-                    LEFT JOIN user_progress up ON l.id = up.lesson_id AND up.user_id = ?
-                    ORDER BY l.id DESC 
-                    LIMIT 4
-                ";
-                break;
-            case 'difficulty':
-                $lesson_query = "
-                    SELECT l.*, up.completed, up.completed_at 
-                    FROM lessons l 
-                    LEFT JOIN user_progress up ON l.id = up.lesson_id AND up.user_id = ?
-                    ORDER BY 
-                        CASE l.difficulty 
-                            WHEN 'beginner' THEN 1 
-                            WHEN 'intermediate' THEN 2 
-                            WHEN 'advanced' THEN 3 
-                        END, l.order_num 
-                    LIMIT 4
-                ";
-                break;
-            default: // popular
-                $lesson_query = "
-                    SELECT l.*, up.completed, up.completed_at,
-                           (SELECT COUNT(*) FROM user_progress up2 WHERE up2.lesson_id = l.id AND up2.completed = 1) as completion_count
-                    FROM lessons l 
-                    LEFT JOIN user_progress up ON l.id = up.lesson_id AND up.user_id = ?
-                    ORDER BY completion_count DESC, l.xp_reward DESC 
-                    LIMIT 4
-                ";
-        }
-        
-        $stmt = $pdo->prepare($lesson_query);
-        $stmt->execute([$_SESSION['user_id']]);
-        $featured_lessons = $stmt->fetchAll();
-        
-        foreach ($featured_lessons as $lesson): 
-        ?>
-            <div class="content-card hover:border-orange-500/50 transition-all">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-12 h-12 <?= $lesson['completed'] ? 'bg-green-500' : 'bg-orange-500' ?> rounded-lg flex items-center justify-center">
-                            <i class="fas fa-<?= $lesson['completed'] ? 'check' : 'play' ?> text-white"></i>
-                        </div>
-                        <div class="flex-1">
-                            <div class="font-semibold text-lg"><?= htmlspecialchars($lesson['title']) ?></div>
-                            <div class="text-sm text-muted mb-2"><?= htmlspecialchars(substr($lesson['description'], 0, 80)) ?>...</div>
-                            <div class="flex items-center space-x-4">
-                                <span class="text-xs bg-<?= $lesson['difficulty'] === 'beginner' ? 'green' : ($lesson['difficulty'] === 'intermediate' ? 'blue' : 'orange') ?>-500/20 text-<?= $lesson['difficulty'] === 'beginner' ? 'green' : ($lesson['difficulty'] === 'intermediate' ? 'blue' : 'orange') ?>-400 px-2 py-1 rounded-full">
-                                    <?= ucfirst($lesson['difficulty']) ?>
-                                </span>
-                                <span class="text-xs text-gray-500">
-                                    <i class="fas fa-star"></i> <?= $lesson['xp_reward'] ?> XP
-                                </span>
-                                <?php if ($lesson['completed']): ?>
-                                    <span class="text-xs text-green-400">
-                                        <i class="fas fa-check-circle"></i> Completed
-                                    </span>
-                                <?php endif; ?>
-                            </div>
+                    $lp = $lang_progress[$lang["id"]] ?? [
+                        "total" => 0,
+                        "completed" => 0,
+                    ];
+                    $pct =
+                        $lp["total"] > 0
+                            ? round(($lp["completed"] / $lp["total"]) * 100)
+                            : 0;
+                    ?>
+                    <div class="flex items-center gap-2">
+                        <i class="<?= $lang["icon"] ?>" style="color:<?= $lang[
+    "color"
+] ?>; width:16px; text-align:center;"></i>
+                        <span class="text-xs font-medium flex-1"><?= $lang[
+                            "name"
+                        ] ?></span>
+                        <span class="text-xs text-twitch-muted"><?= $lp[
+                            "completed"
+                        ] ?>/<?= $lp["total"] ?></span>
+                        <div class="xp-bar-container" style="width:60px;">
+                            <div class="xp-bar" style="width:<?= $pct ?>%;"></div>
                         </div>
                     </div>
-                    
-                    <div class="flex items-center space-x-4">
-                        <a href="index.php?page=lesson&id=<?= $lesson['id'] ?>" 
-                           class="<?= $lesson['completed'] ? 'btn-secondary' : 'btn-primary' ?> px-6 py-2">
-                            <?= $lesson['completed'] ? 'Review' : 'Start' ?>
-                        </a>
-                    </div>
-                </div>
+                <?php
+                endforeach; ?>
             </div>
-        <?php endforeach; ?>
-        
-        <?php if (empty($featured_lessons)): ?>
-            <div class="content-card text-center py-12">
-                <i class="fas fa-book text-6xl text-gray-600 mb-4"></i>
-                <div class="title-medium mb-4">No Lessons Available</div>
-                <div class="text-secondary mb-6">Lessons are being prepared for your Rust journey!</div>
-                <a href="index.php?page=lessons" class="btn-primary">
-                    Check Back Later
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="tw-card tw-card-body">
+            <div class="text-sm font-bold text-twitch-muted uppercase tracking-wider mb-3">Quick Actions</div>
+            <div class="grid grid-cols-2 gap-2">
+                <a href="index.php?page=lessons" class="tw-btn tw-btn-secondary tw-btn-sm">
+                    <i class="fas fa-graduation-cap"></i> Learn
+                </a>
+                <a href="index.php?page=battle-royale" class="tw-btn tw-btn-secondary tw-btn-sm">
+                    <i class="fas fa-crosshairs"></i> Battle
+                </a>
+                <a href="index.php?page=mini-games" class="tw-btn tw-btn-secondary tw-btn-sm">
+                    <i class="fas fa-gamepad"></i> Games
+                </a>
+                <a href="index.php?page=ai-tutor" class="tw-btn tw-btn-secondary tw-btn-sm">
+                    <i class="fas fa-robot"></i> AI Tutor
                 </a>
             </div>
-        <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Learning Progress -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Stats Row -->
+            <div class="grid grid-cols-4 gap-4">
+                <div class="tw-card tw-card-body" style="text-align:center;">
+                    <div class="text-2xl font-black" style="color:#9147FF;"><?= $stats[
+                        "completed_lessons"
+                    ] ?></div>
+                    <div class="text-xs text-twitch-muted">Lessons Done</div>
+                </div>
+                <div class="tw-card tw-card-body" style="text-align:center;">
+                    <div class="text-2xl font-black" style="color:#00D95A;"><?= number_format(
+                        $user["total_xp_earned"] ?: $user["xp"],
+                    ) ?></div>
+                    <div class="text-xs text-twitch-muted">Total XP</div>
+                </div>
+                <div class="tw-card tw-card-body" style="text-align:center;">
+                    <div class="text-2xl font-black" style="color:#A970FF;"><?= $stats[
+                        "languages_completed"
+                    ] ?:
+                        $stats["languages_used"] ?:
+                        1 ?></div>
+                    <div class="text-xs text-twitch-muted">Languages</div>
+                </div>
+                <div class="tw-card tw-card-body" style="text-align:center;">
+                    <div class="text-2xl font-black" style="color:#FF6B35;"><?= $user[
+                        "level"
+                    ] ?></div>
+                    <div class="text-xs text-twitch-muted">Level</div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="tw-card">
+                <div class="tw-card-header">
+                    <h3 class="font-bold"><i class="fas fa-clock-rotate mr-2" style="color:#9147FF;"></i> Recent Activity</h3>
+                    <a href="index.php?page=leaderboard" class="text-xs text-twitch-purple hover:underline">View All</a>
+                </div>
+                <div class="tw-card-body">
+                    <?php if (!empty($notifications)): ?>
+                        <div class="space-y-3">
+                            <?php foreach ($notifications as $notif): ?>
+                                <div class="flex items-start gap-3 p-3 rounded-lg <?= $notif[
+                                    "read_at"
+                                ]
+                                    ? ""
+                                    : "bg-twitch-purple/5" ?>" style="border-left: 3px solid <?= $notif[
+    "read_at"
+]
+    ? "#3A3A45"
+    : "#9147FF" ?>;">
+                                    <div>
+                                        <?php
+                                        $notif_icons = [
+                                            "badge_earned" =>
+                                                '<i class="fas fa-medal" style="color:#FFD700;"></i>',
+                                            "level_up" =>
+                                                '<i class="fas fa-arrow-up" style="color:#00D95A;"></i>',
+                                            "lesson_completed" =>
+                                                '<i class="fas fa-check-circle" style="color:#9147FF;"></i>',
+                                            "br_event" =>
+                                                '<i class="fas fa-crosshairs" style="color:#E9197B;"></i>',
+                                            "streak" =>
+                                                '<i class="fas fa-fire" style="color:#FF6B35;"></i>',
+                                        ];
+                                        echo $notif_icons[$notif["type"]] ??
+                                            '<i class="fas fa-bell" style="color:#ADADB8;"></i>';
+                                        ?>
+                                    </div>
+                                    <div style="flex:1;">
+                                        <div class="text-sm font-medium"><?= htmlspecialchars(
+                                            $notif["title"],
+                                        ) ?></div>
+                                        <div class="text-xs text-twitch-muted"><?= htmlspecialchars(
+                                            $notif["message"],
+                                        ) ?></div>
+                                        <div class="text-xs text-twitch-muted mt-1"><?= time_ago(
+                                            $notif["created_at"],
+                                        ) ?></div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div style="text-align:center; padding:20px; color:#ADADB8;">
+                            <i class="fas fa-inbox" style="font-size:32px; margin-bottom:8px; color:#2D2D35;"></i>
+                            <p class="text-sm">No recent activity. Start learning to see your progress!</p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Continue Learning (Next Lessons) -->
+            <div class="tw-card">
+                <div class="tw-card-header">
+                    <h3 class="font-bold"><i class="fas fa-graduation-cap mr-2" style="color:#9147FF;"></i> Continue Learning</h3>
+                    <a href="index.php?page=lessons" class="text-xs text-twitch-purple hover:underline">All Lessons</a>
+                </div>
+                <div class="tw-card-body">
+                    <?php
+                    // Find next uncompleted lesson
+                    $stmt = $pdo->prepare("
+                        SELECT l.*, lang.name as lang_name, lang.color as lang_color, lang.icon as lang_icon
+                        FROM lessons l
+                        JOIN languages lang ON l.language_id = lang.id
+                        LEFT JOIN user_progress up ON l.id = up.lesson_id AND up.user_id = ?
+                        WHERE (up.completed IS NULL OR up.completed = 0)
+                        ORDER BY l.language_id, l.order_num
+                        LIMIT 3
+                    ");
+                    $stmt->execute([$_SESSION["user_id"]]);
+                    $next_lessons = $stmt->fetchAll();
+                    ?>
+
+                    <?php if (!empty($next_lessons)): ?>
+                        <div class="space-y-3">
+                            <?php foreach ($next_lessons as $lesson): ?>
+                                <a href="index.php?page=lesson&id=<?= $lesson[
+                                    "id"
+                                ] ?>" class="flex items-center gap-4 p-4 rounded-lg hover:bg-twitch-medium transition-all" style="text-decoration:none; display:flex;">
+                                    <div style="width:40px; height:40px; border-radius:10px; background:<?= $lesson[
+                                        "lang_color"
+                                    ] ?>20; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                        <i class="<?= $lesson[
+                                            "lang_icon"
+                                        ] ?>" style="color:<?= $lesson[
+    "lang_color"
+] ?>;"></i>
+                                    </div>
+                                    <div style="flex:1;">
+                                        <div class="text-sm font-medium text-twitch-text"><?= htmlspecialchars(
+                                            $lesson["title"],
+                                        ) ?></div>
+                                        <div class="text-xs text-twitch-muted"><?= $lesson[
+                                            "lang_name"
+                                        ] ?> · <?= ucfirst(
+     $lesson["difficulty"],
+ ) ?> · +<?= $lesson["xp_reward"] ?> XP</div>
+                                    </div>
+                                    <i class="fas fa-chevron-right" style="color:#ADADB8;"></i>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div style="text-align:center; padding:20px; color:#ADADB8;">
+                            <i class="fas fa-check-circle" style="font-size:32px; margin-bottom:8px; color:#00D95A;"></i>
+                            <p class="text-sm font-bold">All lessons completed! 🎉</p>
+
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="space-y-6">
+            <!-- Daily Challenge -->
+            <div class="tw-card">
+                <div class="tw-card-header">
+                    <h3 class="font-bold"><i class="fas fa-calendar-day mr-2" style="color:#FF6B35;"></i> Daily Challenge</h3>
+                </div>
+                <div class="tw-card-body">
+                    <?php $daily = get_daily_challenge(); ?>
+                    <?php if ($daily): ?>
+                        <div class="text-center mb-4">
+                            <div class="text-3xl mb-2">🎯</div>
+                            <div class="font-bold"><?= htmlspecialchars(
+                                $daily["title"],
+                            ) ?></div>
+                            <div class="text-xs text-twitch-muted mt-1"><?= $daily[
+                                "language_name"
+                            ] ?> · <?= ucfirst($daily["difficulty"]) ?></div>
+                        </div>
+                        <a href="index.php?page=lesson&id=<?= $daily[
+                            "id"
+                        ] ?>" class="tw-btn tw-btn-primary tw-btn-sm tw-btn-block">
+                            <i class="fas fa-play"></i> Solve +<?= $daily[
+                                "xp_reward"
+                            ] ?> XP
+                        </a>
+                    <?php else: ?>
+                        <div class="text-center">
+                            <div class="text-3xl mb-2">📅</div>
+                            <div class="text-sm text-twitch-muted">Complete lessons to get daily challenges!</div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Active Battles -->
+            <div class="tw-card">
+                <div class="tw-card-header">
+                    <h3 class="font-bold"><i class="fas fa-crosshairs mr-2" style="color:#E9197B;"></i> Live Battles</h3>
+                    <a href="index.php?page=battle-royale" class="text-xs text-twitch-purple hover:underline">Join</a>
+                </div>
+                <div class="tw-card-body">
+                    <?php if (!empty($active_matches)): ?>
+                        <div class="space-y-3">
+                            <?php foreach (
+                                array_slice($active_matches, 0, 3)
+                                as $match
+                            ): ?>
+                                <a href="index.php?page=battle-royale" class="flex items-center gap-3 p-2 rounded hover:bg-twitch-medium transition-all" style="text-decoration:none; display:flex;">
+                                    <span class="live-dot"></span>
+                                    <div style="flex:1;">
+                                        <div class="text-sm font-medium text-twitch-text"><?= htmlspecialchars(
+                                            $match["title"],
+                                        ) ?></div>
+                                        <div class="text-xs text-twitch-muted"><?= $match[
+                                            "player_count"
+                                        ] ?>/<?= $match[
+    "max_players"
+] ?> players</div>
+                                    </div>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div style="text-align:center; padding:12px; color:#ADADB8; font-size:13px;">
+                            No active battles right now
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Badges Showcase -->
+            <div class="tw-card">
+                <div class="tw-card-header">
+                    <h3 class="font-bold"><i class="fas fa-medal mr-2" style="color:#FFD700;"></i> Recent Badges</h3>
+                    <a href="index.php?page=profile" class="text-xs text-twitch-purple hover:underline">All</a>
+                </div>
+                <div class="tw-card-body">
+                    <?php
+                    $stmt = $pdo->prepare("
+                        SELECT b.*, ub.earned_at
+                        FROM user_badges ub
+                        JOIN badges b ON ub.badge_id = b.id
+                        WHERE ub.user_id = ?
+                        ORDER BY ub.earned_at DESC
+                        LIMIT 6
+                    ");
+                    $stmt->execute([$_SESSION["user_id"]]);
+                    $earned_badges = $stmt->fetchAll();
+                    ?>
+
+                    <?php if (!empty($earned_badges)): ?>
+                        <div class="grid grid-cols-3 gap-3">
+                            <?php foreach ($earned_badges as $badge): ?>
+                                <div class="text-center" title="<?= htmlspecialchars(
+                                    $badge["description"],
+                                ) ?>">
+                                    <div style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg, #9147FF, #772CE8); display:flex; align-items:center; justify-content:center; margin:0 auto 4px;">
+                                        <i class="<?= $badge[
+                                            "icon"
+                                        ] ?>" style="color:white; font-size:16px;"></i>
+                                    </div>
+                                    <div style="font-size:9px; color:#ADADB8;"><?= htmlspecialchars(
+                                        substr($badge["name"], 0, 12),
+                                    ) ?></div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div style="text-align:center; padding:12px; color:#ADADB8; font-size:13px;">
+                            Complete lessons to earn badges!
+                        </div>
+                        <a href="index.php?page=lessons" class="tw-btn tw-btn-primary tw-btn-sm tw-btn-block mt-3">
+                            <i class="fas fa-graduation-cap"></i> Start Learning
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
-
-<script>
-// Add interactive features
-document.addEventListener('DOMContentLoaded', function() {
-    // Animate statistics on load
-    const statValues = document.querySelectorAll('.stat-value');
-    statValues.forEach(stat => {
-        const finalValue = parseInt(stat.textContent);
-        if (!isNaN(finalValue)) {
-            let currentValue = 0;
-            const increment = finalValue / 30;
-            const timer = setInterval(() => {
-                currentValue += increment;
-                if (currentValue >= finalValue) {
-                    stat.textContent = finalValue;
-                    clearInterval(timer);
-                } else {
-                    stat.textContent = Math.floor(currentValue);
-                }
-            }, 50);
-        }
-    });
-    
-    // Add hover effects to learning path cards
-    const pathCards = document.querySelectorAll('.content-card[onclick]');
-    pathCards.forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-4px)';
-        });
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-        });
-    });
-});
-</script>

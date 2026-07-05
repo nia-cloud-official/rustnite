@@ -1,17 +1,23 @@
 <?php
 try {
     $pdo = new PDO(
-        "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+        "mysql:host=" .
+            DB_HOST .
+            ";port=" .
+            DB_PORT .
+            ";dbname=" .
+            DB_NAME .
+            ";charset=utf8mb4",
         DB_USER,
         DB_PASS,
         [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false
-        ]
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ],
     );
 } catch (PDOException $e) {
-    die(json_encode(['error' => 'Database connection failed']));
+    die(json_encode(["error" => "Database connection failed"]));
 }
 
 // Core tables
@@ -258,10 +264,11 @@ CREATE TABLE IF NOT EXISTS daily_challenges (
     FOREIGN KEY (language_id) REFERENCES languages(id),
     UNIQUE KEY unique_date (date)
 );
+");
 
 // Seed languages if empty
 $stmt = $pdo->query("SELECT COUNT(*) as count FROM languages");
-if ($stmt->fetch()['count'] == 0) {
+if ($stmt->fetch()["count"] == 0) {
     $pdo->exec("
         INSERT INTO languages (name, slug, icon, color, extension, template, docker_image, compiler_command, run_command, sort_order) VALUES
         ('Rust', 'rust', 'fab fa-rust', '#DEA584', '.rs', 'fn main() {\n    println!(\"Hello, World!\");\n}', 'rust:1.70', 'rustc main.rs', './main', 1),
@@ -274,7 +281,7 @@ if ($stmt->fetch()['count'] == 0) {
 
 // Seed some badges if empty
 $stmt = $pdo->query("SELECT COUNT(*) as count FROM badges");
-if ($stmt->fetch()['count'] == 0) {
+if ($stmt->fetch()["count"] == 0) {
     $pdo->exec("
         INSERT INTO badges (name, description, icon, requirement_type, requirement_value, badge_group) VALUES
         ('First Steps', 'Complete your first lesson', 'fas fa-baby', 'lessons_completed', 1, 'learning'),
@@ -301,7 +308,7 @@ if ($stmt->fetch()['count'] == 0) {
 
 // Seed mini-games if empty
 $stmt = $pdo->query("SELECT COUNT(*) as count FROM mini_games");
-if ($stmt->fetch()['count'] == 0) {
+if ($stmt->fetch()["count"] == 0) {
     $pdo->exec("
         INSERT INTO mini_games (title, description, type, difficulty, game_data, xp_reward) VALUES
         ('Speed Syntax', 'Type the correct syntax as fast as you can!', 'syntax_speed', 'beginner', '{\"time_limit\":30,\"questions\":[{\"prompt\":\"Print to console in Python\",\"answer\":\"print(\\\"Hello\\\")\"},{\"prompt\":\"Declare a variable in Rust\",\"answer\":\"let x = 5\"},{\"prompt\":\"For loop in JavaScript\",\"answer\":\"for(let i=0;i<10;i++)\"}]}', 100),

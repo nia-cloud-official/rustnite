@@ -1,438 +1,375 @@
 <?php
-$user = get_user_by_id($_SESSION['user_id']);
-$progress = get_user_progress($_SESSION['user_id']);
-$completed_lessons = array_filter($progress, fn($lesson) => $lesson['completed']);
+$page_title = "Profile";
+$user = get_user_by_id($_SESSION["user_id"]);
+$progress = get_user_progress($_SESSION["user_id"]);
+$completed_lessons = array_filter(
+    $progress,
+    fn($lesson) => $lesson["completed"],
+);
+$languages = get_languages();
 
-// Handle profile updates
-$message = '';
-$message_type = '';
+// Handle profile update
+$message = "";
+$message_type = "";
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['update_profile'])) {
-        $bio = trim($_POST['bio'] ?? '');
-        $github_username = trim($_POST['github_username'] ?? '');
-        $twitter_username = trim($_POST['twitter_username'] ?? '');
-        $website = trim($_POST['website'] ?? '');
-        $location = trim($_POST['location'] ?? '');
-        $public_profile = isset($_POST['public_profile']) ? 1 : 0;
-        
-        $stmt = $pdo->prepare("
-            UPDATE users SET 
-                bio = ?, 
-                github_username = ?, 
-                twitter_username = ?, 
-                website = ?, 
-                location = ?,
-                public_profile = ?
-            WHERE id = ?
-        ");
-        
-        if ($stmt->execute([$bio, $github_username, $twitter_username, $website, $location, $public_profile, $_SESSION['user_id']])) {
-            $message = 'Profile updated successfully!';
-            $message_type = 'success';
-            $user = get_user_by_id($_SESSION['user_id']); // Refresh user data
-        } else {
-            $message = 'Failed to update profile.';
-            $message_type = 'error';
-        }
-    }
-    
-    if (isset($_POST['share_code'])) {
-        $lesson_id = (int)$_POST['lesson_id'];
-        $code = $_POST['code'];
-        $description = trim($_POST['description'] ?? '');
-        
-        $stmt = $pdo->prepare("
-            INSERT INTO code_shares (user_id, lesson_id, code, description, created_at) 
-            VALUES (?, ?, ?, ?, NOW())
-        ");
-        
-        if ($stmt->execute([$_SESSION['user_id'], $lesson_id, $code, $description])) {
-            $message = 'Code shared successfully!';
-            $message_type = 'success';
-        } else {
-            $message = 'Failed to share code.';
-            $message_type = 'error';
-        }
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["update_profile"])) {
+    $bio = sanitize($_POST["bio"] ?? "");
+    $github = sanitize($_POST["github_username"] ?? "");
+    $twitter = sanitize($_POST["twitter_username"] ?? "");
+    $website = sanitize($_POST["website"] ?? "");
+    $location = sanitize($_POST["location"] ?? "");
+    $public = isset($_POST["public_profile"]) ? 1 : 0;
+    $preferred_lang = (int) ($_POST["preferred_language"] ?? 1);
+
+    $stmt = $pdo->prepare(
+        "UPDATE users SET bio=?, github_username=?, twitter_username=?, website=?, location=?, public_profile=?, preferred_language=? WHERE id=?",
+    );
+
+    if (
+        $stmt->execute([
+            $bio,
+            $github,
+            $twitter,
+            $website,
+            $location,
+            $public,
+            $preferred_lang,
+            $_SESSION["user_id"],
+        ])
+    ) {
+        $message = "Profile updated successfully!";
+        $message_type = "success";
+        $user = get_user_by_id($_SESSION["user_id"]);
+    } else {
+        $message = "Failed to update profile.";
+        $message_type = "error";
     }
 }
 
-// Get user statistics
-$stmt = $pdo->prepare("
-    SELECT 
-        COUNT(CASE WHEN up.completed = 1 THEN 1 END) as completed_count,
-        COUNT(*) as total_available,
-        SUM(CASE WHEN up.completed = 1 THEN l.xp_reward ELSE 0 END) as total_xp_earned,
-        MIN(CASE WHEN up.completed = 1 THEN up.completed_at END) as first_completion,
-        MAX(CASE WHEN up.completed = 1 THEN up.completed_at END) as last_completion
-    FROM lessons l 
-    LEFT JOIN user_progress up ON l.id = up.lesson_id AND up.user_id = ?
-");
-$stmt->execute([$_SESSION['user_id']]);
-$stats = $stmt->fetch();
+// Get badges
+$stmt = $pdo->prepare(
+    "SELECT b.*, ub.earned_at FROM user_badges ub JOIN badges b ON ub.badge_id = b.id WHERE ub.user_id = ? ORDER BY ub.earned_at DESC",
+);
+$stmt->execute([$_SESSION["user_id"]]);
+$badges = $stmt->fetchAll();
 
-// Get user rank
-$stmt = $pdo->prepare("SELECT COUNT(*) + 1 as `user_rank` FROM users WHERE xp > ?");
-$stmt->execute([$user['xp']]);
-$user_rank = $stmt->fetch()['user_rank'];
+// Stats
+$stmt = $pdo->prepare(
+    "SELECT COUNT(*) as count FROM user_progress WHERE user_id = ? AND completed = 1",
+);
+$stmt->execute([$_SESSION["user_id"]]);
+$completed_count = $stmt->fetch()["count"];
 
-// Get recent activity
-$stmt = $pdo->prepare("
-    SELECT l.title, l.difficulty, l.xp_reward, up.completed_at 
-    FROM user_progress up 
-    JOIN lessons l ON up.lesson_id = l.id 
-    WHERE up.user_id = ? AND up.completed = 1 
-    ORDER BY up.completed_at DESC 
-    LIMIT 10
-");
-$stmt->execute([$_SESSION['user_id']]);
-$recent_activity = $stmt->fetchAll();
+$stmt = $pdo->prepare(
+    "SELECT COUNT(*) + 1 as user_rank FROM users WHERE xp > ?",
+);
+$stmt->execute([$user["xp"]]);
+$rank = $stmt->fetch()["user_rank"];
 
-// Get user's badges (with error handling for missing table)
-$badges = [];
-try {
+// Language breakdown
+$lang_stats = [];
+foreach ($languages as $lang) {
     $stmt = $pdo->prepare("
-        SELECT b.name, b.description, b.icon, ub.earned_at
-        FROM user_badges ub
-        JOIN badges b ON ub.badge_id = b.id
-        WHERE ub.user_id = ?
-        ORDER BY ub.earned_at DESC
+        SELECT COUNT(*) as total, SUM(CASE WHEN up.completed=1 THEN 1 ELSE 0 END) as done
+        FROM lessons l LEFT JOIN user_progress up ON l.id=up.lesson_id AND up.user_id=?
+        WHERE l.language_id=?
     ");
-    $stmt->execute([$_SESSION['user_id']]);
-    $badges = $stmt->fetchAll();
-} catch (PDOException $e) {
-    // Table doesn't exist yet, badges will be empty array
-    $badges = [];
-}
-
-// Get shared code snippets (with error handling for missing table)
-$shared_code = [];
-try {
-    $stmt = $pdo->prepare("
-        SELECT cs.*, l.title as lesson_title, l.difficulty
-        FROM code_shares cs
-        JOIN lessons l ON cs.lesson_id = l.id
-        WHERE cs.user_id = ?
-        ORDER BY cs.created_at DESC
-        LIMIT 5
-    ");
-    $stmt->execute([$_SESSION['user_id']]);
-    $shared_code = $stmt->fetchAll();
-} catch (PDOException $e) {
-    // Table doesn't exist yet, shared_code will be empty array
-    $shared_code = [];
-}
-
-// Calculate learning streak
-$stmt = $pdo->prepare("
-    SELECT DATE(completed_at) as completion_date 
-    FROM user_progress 
-    WHERE user_id = ? AND completed = 1 
-    ORDER BY completed_at DESC
-");
-$stmt->execute([$_SESSION['user_id']]);
-$completion_dates = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-$current_streak = 0;
-$today = new DateTime();
-$yesterday = new DateTime('-1 day');
-
-if (!empty($completion_dates)) {
-    $last_completion = new DateTime($completion_dates[0]);
-    
-    if ($last_completion->format('Y-m-d') === $today->format('Y-m-d') || 
-        $last_completion->format('Y-m-d') === $yesterday->format('Y-m-d')) {
-        
-        $current_streak = 1;
-        $check_date = clone $last_completion;
-        
-        for ($i = 1; $i < count($completion_dates); $i++) {
-            $prev_date = new DateTime($completion_dates[$i]);
-            $check_date->modify('-1 day');
-            
-            if ($prev_date->format('Y-m-d') === $check_date->format('Y-m-d')) {
-                $current_streak++;
-            } else {
-                break;
-            }
-        }
-    }
+    $stmt->execute([$_SESSION["user_id"], $lang["id"]]);
+    $lang_stats[$lang["id"]] = $stmt->fetch();
 }
 ?>
-
-<div class="max-w-6xl mx-auto">
+<div style="animation: fade-in 0.5s ease-out;">
     <!-- Profile Header -->
-    <div class="content-card mb-8">
-        <?php if ($message): ?>
-            <div class="mb-6 p-4 rounded-lg <?= $message_type === 'success' ? 'bg-green-500/20 border border-green-500/50 text-green-400' : 'bg-red-500/20 border border-red-500/50 text-red-400' ?>">
-                <?= htmlspecialchars($message) ?>
-            </div>
-        <?php endif; ?>
-        
-        <div class="flex items-start justify-between mb-6">
-            <div class="flex items-center space-x-6">
-                <!-- Avatar -->
-                <div class="w-24 h-24 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center text-3xl font-bold text-white">
-                    <?= strtoupper(substr($user['username'], 0, 2)) ?>
+    <div class="tw-card mb-6" style="background: linear-gradient(135deg, rgba(145,71,255,0.1), rgba(233,25,123,0.05));">
+        <div class="tw-card-body">
+            <div class="flex items-center gap-6 flex-wrap">
+                <div class="tw-avatar online" style="width:80px; height:80px; font-size:32px; border-radius:16px;">
+                    <?= get_avatar_letter($user["username"]) ?>
                 </div>
-                
-                <!-- User Info -->
-                <div>
-                    <div class="flex items-center space-x-4 mb-2">
-                        <h1 class="title-large"><?= htmlspecialchars($user['username']) ?></h1>
-                        <div class="bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                            Level <?= $user['level'] ?>
-                        </div>
-                        <div class="bg-purple-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                            Rank #<?= $user_rank ?>
-                        </div>
+                <div style="flex:1;">
+                    <h1 class="text-2xl font-bold"><?= htmlspecialchars(
+                        $user["username"],
+                    ) ?></h1>
+                    <div class="flex items-center gap-4 mt-2 text-sm text-twitch-muted flex-wrap">
+                        <span><i class="fas fa-shield-alt" style="color:#9147FF;"></i> Level <?= $user[
+                            "level"
+                        ] ?></span>
+                        <span><i class="fas fa-star" style="color:#A970FF;"></i> <?= number_format(
+                            $user["xp"],
+                        ) ?> XP</span>
+                        <span><i class="fas fa-ranking-star" style="color:#FFD700;"></i> Rank #<?= $rank ?></span>
+                        <span><i class="fas fa-fire" style="color:#FF6B35;"></i> <?= $user[
+                            "current_streak"
+                        ] ?> day streak</span>
                     </div>
-                    
-                    <?php if ($user['bio'] ?? false): ?>
-                        <p class="text-secondary mb-3"><?= htmlspecialchars($user['bio']) ?></p>
-                    <?php endif; ?>
-                    
-                    <div class="flex items-center space-x-4 text-sm text-muted">
-                        <?php if ($user['location'] ?? false): ?>
-                            <span><i class="fas fa-map-marker-alt mr-1"></i> <?= htmlspecialchars($user['location']) ?></span>
-                        <?php endif; ?>
-                        
-                        <span><i class="fas fa-calendar mr-1"></i> Joined <?= date('M Y', strtotime($user['created_at'])) ?></span>
-                        
-                        <?php if ($stats['first_completion']): ?>
-                            <span><i class="fas fa-play mr-1"></i> Started learning <?= date('M Y', strtotime($stats['first_completion'])) ?></span>
-                        <?php endif; ?>
-                    </div>
-                    
-                    <!-- Social Links -->
-                    <?php if (($user['github_username'] ?? false) || ($user['twitter_username'] ?? false) || ($user['website'] ?? false)): ?>
-                        <div class="flex items-center space-x-4 mt-3">
-                            <?php if ($user['github_username'] ?? false): ?>
-                                <a href="https://github.com/<?= htmlspecialchars($user['github_username']) ?>" 
-                                   target="_blank" class="text-gray-400 hover:text-white">
-                                    <i class="fab fa-github text-lg"></i>
-                                </a>
-                            <?php endif; ?>
-                            
-                            <?php if ($user['twitter_username'] ?? false): ?>
-                                <a href="https://twitter.com/<?= htmlspecialchars($user['twitter_username']) ?>" 
-                                   target="_blank" class="text-gray-400 hover:text-blue-400">
-                                    <i class="fab fa-twitter text-lg"></i>
-                                </a>
-                            <?php endif; ?>
-                            
-                            <?php if ($user['website'] ?? false): ?>
-                                <a href="<?= htmlspecialchars($user['website']) ?>" 
-                                   target="_blank" class="text-gray-400 hover:text-orange-400">
-                                    <i class="fas fa-globe text-lg"></i>
-                                </a>
-                            <?php endif; ?>
-                        </div>
+                    <?php if ($user["bio"]): ?>
+                        <p class="text-sm text-twitch-text mt-3"><?= htmlspecialchars(
+                            $user["bio"],
+                        ) ?></p>
                     <?php endif; ?>
                 </div>
             </div>
-            
-            <!-- Edit Profile Button -->
-            <button onclick="toggleEditProfile()" class="btn-secondary">
-                <i class="fas fa-edit mr-2"></i>
-                Edit Profile
-            </button>
         </div>
     </div>
 
-    <!-- Edit Profile Form (Hidden by default) -->
-    <div id="edit-profile-form" class="content-card mb-8 hidden">
-        <div class="title-medium mb-6">Edit Profile</div>
-        
-        <form method="POST" class="space-y-6">
-            <div class="grid md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm font-medium mb-2">Bio</label>
-                    <textarea name="bio" rows="3" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" 
-                              placeholder="Tell us about yourself..."><?= htmlspecialchars($user['bio'] ?? '') ?></textarea>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium mb-2">Location</label>
-                    <input type="text" name="location" value="<?= htmlspecialchars($user['location'] ?? '') ?>" 
-                           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" 
-                           placeholder="City, Country">
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium mb-2">GitHub Username</label>
-                    <input type="text" name="github_username" value="<?= htmlspecialchars($user['github_username'] ?? '') ?>" 
-                           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" 
-                           placeholder="your-github-username">
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium mb-2">Twitter Username</label>
-                    <input type="text" name="twitter_username" value="<?= htmlspecialchars($user['twitter_username'] ?? '') ?>" 
-                           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" 
-                           placeholder="your-twitter-handle">
-                </div>
-                
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium mb-2">Website</label>
-                    <input type="url" name="website" value="<?= htmlspecialchars($user['website'] ?? '') ?>" 
-                           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white" 
-                           placeholder="https://your-website.com">
-                </div>
-                
-                <div class="md:col-span-2">
-                    <label class="flex items-center space-x-2">
-                        <input type="checkbox" name="public_profile" <?= ($user['public_profile'] ?? 0) ? 'checked' : '' ?> 
-                               class="rounded bg-gray-800 border-gray-700 text-orange-500">
-                        <span class="text-sm">Make my profile public (visible to other users)</span>
-                    </label>
-                </div>
-            </div>
-            
-            <div class="flex items-center space-x-4">
-                <button type="submit" name="update_profile" class="btn-primary">
-                    <i class="fas fa-save mr-2"></i>
-                    Save Changes
-                </button>
-                <button type="button" onclick="toggleEditProfile()" class="btn-secondary">
-                    Cancel
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <div class="grid lg:grid-cols-3 gap-8">
-        <!-- Main Content -->
-        <div class="lg:col-span-2 space-y-8">
-            <!-- Statistics -->
-            <div class="content-card">
-                <div class="title-medium mb-6">Learning Statistics</div>
-                
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div class="stat-item">
-                        <div class="stat-value text-orange-400"><?= number_format($user['xp']) ?></div>
-                        <div class="stat-label">Total XP</div>
-                    </div>
-                    
-                    <div class="stat-item">
-                        <div class="stat-value text-green-400"><?= $stats['completed_count'] ?></div>
-                        <div class="stat-label">Lessons Completed</div>
-                    </div>
-                    
-                    <div class="stat-item">
-                        <div class="stat-value text-blue-400"><?= $current_streak ?></div>
-                        <div class="stat-label">Day Streak</div>
-                    </div>
-                    
-                    <div class="stat-item">
-                        <div class="stat-value text-purple-400"><?= round(($stats['completed_count'] / max($stats['total_available'], 1)) * 100) ?>%</div>
-                        <div class="stat-label">Progress</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Recent Activity -->
-            <div class="content-card">
-                <div class="title-medium mb-6">Recent Activity</div>
-                
-                <?php if (!empty($recent_activity)): ?>
-                    <div class="space-y-4">
-                        <?php foreach ($recent_activity as $activity): ?>
-                            <div class="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
-                                <div class="flex items-center space-x-4">
-                                    <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                                        <i class="fas fa-check text-white"></i>
-                                    </div>
-                                    <div>
-                                        <div class="font-medium"><?= htmlspecialchars($activity['title']) ?></div>
-                                        <div class="text-sm text-muted">
-                                            <?= ucfirst($activity['difficulty']) ?> • 
-                                            <?= time_ago($activity['completed_at']) ?>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="text-orange-400 font-bold">
-                                    +<?= $activity['xp_reward'] ?> XP
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <div class="text-center py-8">
-                        <i class="fas fa-clock text-4xl text-gray-600 mb-4"></i>
-                        <div class="text-muted">No recent activity</div>
-                        <a href="index.php?page=lessons" class="btn-primary mt-4">
-                            Start Learning
-                        </a>
-                    </div>
-                <?php endif; ?>
-            </div>
+    <?php if ($message): ?>
+        <div class="tw-card tw-card-body mb-6" style="<?= $message_type ===
+        "success"
+            ? "border-color:rgba(0,217,90,0.3); background:rgba(0,217,90,0.1);"
+            : "border-color:rgba(233,25,123,0.3); background:rgba(233,25,123,0.1);" ?>">
+            <span style="color:<?= $message_type === "success"
+                ? "#00D95A"
+                : "#E9197B" ?>;">
+                <i class="fas fa-<?= $message_type === "success"
+                    ? "check-circle"
+                    : "exclamation-circle" ?> mr-2"></i>
+                <?= $message ?>
+            </span>
         </div>
-        
-        <!-- Sidebar -->
+    <?php endif; ?>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left: Stats -->
         <div class="space-y-6">
-            <!-- Badges -->
-            <div class="content-card">
-                <div class="title-medium mb-4">Achievements</div>
-                
-                <?php if (!empty($badges)): ?>
-                    <div class="grid grid-cols-3 gap-3">
-                        <?php foreach ($badges as $badge): ?>
-                            <div class="text-center p-3 bg-gray-800/50 rounded-lg" title="<?= htmlspecialchars($badge['description']) ?>">
-                                <i class="<?= $badge['icon'] ?> text-2xl text-yellow-400 mb-2"></i>
-                                <div class="text-xs font-medium"><?= htmlspecialchars($badge['name']) ?></div>
-                                <div class="text-xs text-muted"><?= date('M Y', strtotime($badge['earned_at'])) ?></div>
-                            </div>
-                        <?php endforeach; ?>
+            <div class="tw-card">
+                <div class="tw-card-header">
+                    <h3 class="font-bold"><i class="fas fa-chart-simple mr-2" style="color:#9147FF;"></i> Statistics</h3>
+                </div>
+                <div class="tw-card-body">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div style="text-align:center;">
+                            <div class="text-2xl font-black" style="color:#9147FF;"><?= $completed_count ?></div>
+                            <div class="text-xs text-twitch-muted">Lessons</div>
+                        </div>
+                        <div style="text-align:center;">
+                            <div class="text-2xl font-black" style="color:#A970FF;"><?= number_format(
+                                $user["total_xp_earned"] ?: $user["xp"],
+                            ) ?></div>
+                            <div class="text-xs text-twitch-muted">Total XP</div>
+                        </div>
+                        <div style="text-align:center;">
+                            <div class="text-2xl font-black" style="color:#00D95A;"><?= $user[
+                                "longest_streak"
+                            ] ?></div>
+                            <div class="text-xs text-twitch-muted">Best Streak</div>
+                        </div>
+                        <div style="text-align:center;">
+                            <div class="text-2xl font-black" style="color:#FF6B35;"><?= count(
+                                $badges,
+                            ) ?></div>
+                            <div class="text-xs text-twitch-muted">Badges</div>
+                        </div>
                     </div>
-                <?php else: ?>
-                    <div class="text-center py-6">
-                        <i class="fas fa-medal text-4xl text-gray-600 mb-3"></i>
-                        <div class="text-muted text-sm">No badges earned yet</div>
-                        <div class="text-xs text-secondary mt-1">Complete lessons to earn achievements!</div>
-                    </div>
-                <?php endif; ?>
+                </div>
             </div>
-            
-            <!-- Progress Chart -->
-            <div class="content-card">
-                <div class="title-medium mb-4">Learning Progress</div>
-                
-                <div class="space-y-4">
-                    <?php
-                    $difficulties = ['beginner', 'intermediate', 'advanced'];
-                    foreach ($difficulties as $difficulty):
-                        $stmt = $pdo->prepare("
-                            SELECT 
-                                COUNT(*) as total,
-                                COUNT(CASE WHEN up.completed = 1 THEN 1 END) as completed
-                            FROM lessons l
-                            LEFT JOIN user_progress up ON l.id = up.lesson_id AND up.user_id = ?
-                            WHERE l.difficulty = ?
-                        ");
-                        $stmt->execute([$_SESSION['user_id'], $difficulty]);
-                        $diff_stats = $stmt->fetch();
-                        $percentage = $diff_stats['total'] > 0 ? ($diff_stats['completed'] / $diff_stats['total']) * 100 : 0;
-                    ?>
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-sm font-medium capitalize"><?= $difficulty ?></span>
-                                <span class="text-sm text-muted"><?= $diff_stats['completed'] ?>/<?= $diff_stats['total'] ?></span>
+
+            <!-- Language Progress -->
+            <div class="tw-card">
+                <div class="tw-card-header">
+                    <h3 class="font-bold"><i class="fas fa-code mr-2" style="color:#A970FF;"></i> Languages</h3>
+                </div>
+                <div class="tw-card-body">
+                    <div class="space-y-3">
+                        <?php foreach ($languages as $lang):
+
+                            $ls = $lang_stats[$lang["id"]] ?? [
+                                "total" => 0,
+                                "done" => 0,
+                            ];
+                            $pct =
+                                $ls["total"] > 0
+                                    ? round(($ls["done"] / $ls["total"]) * 100)
+                                    : 0;
+                            ?>
+                            <div>
+                                <div class="flex items-center justify-between text-sm mb-1">
+                                    <span class="flex items-center gap-2">
+                                        <i class="<?= $lang[
+                                            "icon"
+                                        ] ?>" style="color:<?= $lang[
+    "color"
+] ?>;"></i>
+                                        <?= $lang["name"] ?>
+                                    </span>
+                                    <span class="text-xs text-twitch-muted"><?= $ls[
+                                        "done"
+                                    ] ?>/<?= $ls["total"] ?></span>
+                                </div>
+                                <div class="xp-bar-container">
+                                    <div class="xp-bar" style="width:<?= $pct ?>%;"></div>
+                                </div>
                             </div>
-                            <div class="progress-container">
-                                <div class="progress-bar" style="width: <?= $percentage ?>%"></div>
+                        <?php
+                        endforeach; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Badges -->
+            <div class="tw-card">
+                <div class="tw-card-header">
+                    <h3 class="font-bold"><i class="fas fa-medal mr-2" style="color:#FFD700;"></i> Badges (<?= count(
+                        $badges,
+                    ) ?>)</h3>
+                </div>
+                <div class="tw-card-body">
+                    <?php if (!empty($badges)): ?>
+                        <div class="grid grid-cols-4 gap-3">
+                            <?php foreach ($badges as $badge): ?>
+                                <div style="text-align:center;" title="<?= htmlspecialchars(
+                                    $badge["description"],
+                                ) ?>">
+                                    <div style="width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg, #9147FF, #772CE8); display:flex; align-items:center; justify-content:center; margin:0 auto 4px; box-shadow:0 4px 12px rgba(145,71,255,0.3);">
+                                        <i class="<?= $badge[
+                                            "icon"
+                                        ] ?>" style="color:white; font-size:18px;"></i>
+                                    </div>
+                                    <div style="font-size:9px; color:#ADADB8; line-height:1.2;"><?= htmlspecialchars(
+                                        $badge["name"],
+                                    ) ?></div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div style="text-align:center; padding:12px; color:#ADADB8; font-size:13px;">
+                            Complete lessons and challenges to earn badges!
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Profile Settings -->
+        <div class="lg:col-span-2">
+            <div class="tw-card">
+                <div class="tw-card-header">
+                    <h3 class="font-bold"><i class="fas fa-gear mr-2" style="color:#9147FF;"></i> Profile Settings</h3>
+                </div>
+                <div class="tw-card-body">
+                    <form method="POST">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-twitch-muted mb-1">Bio</label>
+                                <textarea name="bio" rows="3" class="w-full p-3 bg-twitch-medium border border-twitch-border rounded-lg text-twitch-text focus:outline-none focus:border-twitch-purple"><?= htmlspecialchars(
+                                    $user["bio"] ?? "",
+                                ) ?></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-twitch-muted mb-1">Location</label>
+                                <input type="text" name="location" value="<?= htmlspecialchars(
+                                    $user["location"] ?? "",
+                                ) ?>" class="w-full p-3 bg-twitch-medium border border-twitch-border rounded-lg text-twitch-text focus:outline-none focus:border-twitch-purple" placeholder="City, Country">
+
+                                <label class="block text-sm font-medium text-twitch-muted mb-1 mt-3">Preferred Language</label>
+                                <select name="preferred_language" class="w-full p-3 bg-twitch-medium border border-twitch-border rounded-lg text-twitch-text focus:outline-none focus:border-twitch-purple">
+                                    <?= get_language_select_options(
+                                        $user["preferred_language"],
+                                    ) ?>
+                                </select>
                             </div>
                         </div>
-                    <?php endforeach; ?>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-twitch-muted mb-1">GitHub</label>
+                                <div class="flex items-center gap-2">
+                                    <i class="fab fa-github" style="color:#ADADB8;"></i>
+                                    <input type="text" name="github_username" value="<?= htmlspecialchars(
+                                        $user["github_username"] ?? "",
+                                    ) ?>" class="flex-1 p-3 bg-twitch-medium border border-twitch-border rounded-lg text-twitch-text focus:outline-none focus:border-twitch-purple" placeholder="username">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-twitch-muted mb-1">Twitter</label>
+                                <div class="flex items-center gap-2">
+                                    <i class="fab fa-twitter" style="color:#ADADB8;"></i>
+                                    <input type="text" name="twitter_username" value="<?= htmlspecialchars(
+                                        $user["twitter_username"] ?? "",
+                                    ) ?>" class="flex-1 p-3 bg-twitch-medium border border-twitch-border rounded-lg text-twitch-text focus:outline-none focus:border-twitch-purple" placeholder="@username">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-twitch-muted mb-1">Website</label>
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-globe" style="color:#ADADB8;"></i>
+                                    <input type="url" name="website" value="<?= htmlspecialchars(
+                                        $user["website"] ?? "",
+                                    ) ?>" class="flex-1 p-3 bg-twitch-medium border border-twitch-border rounded-lg text-twitch-text focus:outline-none focus:border-twitch-purple" placeholder="https://">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="public_profile" value="1" <?= $user[
+                                    "public_profile"
+                                ]
+                                    ? "checked"
+                                    : "" ?> class="rounded bg-twitch-medium border-twitch-border">
+                                <span class="text-sm text-twitch-muted">Make profile public</span>
+                            </label>
+
+                            <button type="submit" name="update_profile" class="tw-btn tw-btn-primary">
+                                <i class="fas fa-save"></i>
+                                Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Recent completions -->
+            <div class="tw-card mt-6">
+                <div class="tw-card-header">
+                    <h3 class="font-bold"><i class="fas fa-clock-rotate mr-2" style="color:#00D95A;"></i> Recent Completions</h3>
+                </div>
+                <div class="tw-card-body">
+                    <?php
+                    $stmt = $pdo->prepare("
+                        SELECT l.title, l.xp_reward, lang.name as lang_name, lang.icon as lang_icon, lang.color as lang_color, up.completed_at
+                        FROM user_progress up
+                        JOIN lessons l ON up.lesson_id = l.id
+                        JOIN languages lang ON l.language_id = lang.id
+                        WHERE up.user_id = ? AND up.completed = 1
+                        ORDER BY up.completed_at DESC
+                        LIMIT 10
+                    ");
+                    $stmt->execute([$_SESSION["user_id"]]);
+                    $completions = $stmt->fetchAll();
+                    ?>
+
+                    <?php if (!empty($completions)): ?>
+                        <div class="space-y-2">
+                            <?php foreach ($completions as $c): ?>
+                                <div class="flex items-center gap-3 p-3 rounded-lg hover:bg-twitch-medium transition-all">
+                                    <i class="<?= $c[
+                                        "lang_icon"
+                                    ] ?>" style="color:<?= $c[
+    "lang_color"
+] ?>; width:20px; text-align:center;"></i>
+                                    <div style="flex:1;">
+                                        <div class="text-sm font-medium"><?= htmlspecialchars(
+                                            $c["title"],
+                                        ) ?></div>
+                                        <div class="text-xs text-twitch-muted"><?= $c[
+                                            "lang_name"
+                                        ] ?> · <?= time_ago(
+     $c["completed_at"],
+ ) ?></div>
+                                    </div>
+                                    <span style="color:#A970FF; font-size:12px; font-weight:600;">+<?= $c[
+                                        "xp_reward"
+                                    ] ?> XP</span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div style="text-align:center; padding:12px; color:#ADADB8;">
+                            No lessons completed yet. Start learning!
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<script>
-function toggleEditProfile() {
-    const form = document.getElementById('edit-profile-form');
-    form.classList.toggle('hidden');
-}
-</script>
