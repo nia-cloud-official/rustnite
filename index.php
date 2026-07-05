@@ -22,12 +22,12 @@ $allowed_pages = [
     "mini-games",
     "mini-game-play",
     "ai-tutor",
-    "ai-tutor-chat",
     "daily-challenge",
 ];
 
 if (!in_array($page, $allowed_pages)) {
-    $page = "home";
+    header("Location: index.php?page=dashboard");
+    exit();
 }
 
 // Handle logout
@@ -193,7 +193,6 @@ $protected_pages = [
     "mini-games",
     "mini-game-play",
     "ai-tutor",
-    "ai-tutor-chat",
     "daily-challenge",
 ];
 if (in_array($page, $protected_pages) && !isset($_SESSION["user_id"])) {

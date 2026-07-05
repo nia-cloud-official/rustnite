@@ -227,7 +227,9 @@ function toggleNotifications() {
 }
 
 // ====== CONSOLE EASTER EGG ======
-console.log('%c🦀 Rustnite v<?= APP_VERSION ?>', 'font-size:24px; font-weight:bold; color:#9147FF;');
+	console.log('%c🦀 Rustnite v<?= defined("APP_VERSION")
+     ? APP_VERSION
+     : "2.0.0" ?>', 'font-size:24px; font-weight:bold; color:#9147FF;');
 console.log('%cBattle-Royale Coding Arena', 'font-size:14px; color:#ADADB8;');
 console.log('%c🚀 Let\'s code like a legend!', 'font-size:12px; color:#00D95A;');
 </script>
