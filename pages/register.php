@@ -1,9 +1,5 @@
 <?php
 $page_title = "Create Account";
-if (isset($_SESSION["user_id"])) {
-    header("Location: index.php?page=dashboard");
-    exit();
-}
 
 $errors = [];
 if ($_SERVER["REQUEST_METHOD"] === "POST") {

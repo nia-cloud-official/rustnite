@@ -1,9 +1,5 @@
 <?php
 $page_title = "Sign In";
-if (isset($_SESSION["user_id"])) {
-    header("Location: index.php?page=dashboard");
-    exit();
-}
 
 $error = "";
 if (

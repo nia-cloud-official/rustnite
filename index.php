@@ -201,18 +201,34 @@ if (in_array($page, $protected_pages) && !isset($_SESSION["user_id"])) {
     exit();
 }
 
+// Redirect logged-in users away from auth pages (must be before header output)
+if (
+    ($page === "login" || $page === "register") &&
+    isset($_SESSION["user_id"])
+) {
+    header("Location: index.php?page=dashboard");
+    exit();
+}
+
+// Home page redirect logic
+if ($page === "home") {
+    if (isset($_SESSION["user_id"])) {
+        header("Location: index.php?page=dashboard");
+        exit();
+    } else {
+        header("Location: index.php?page=login");
+        exit();
+    }
+}
+
 // Now include the header and page content
 include "includes/header.php";
 
-// Special pages that might exist in views
-$views_pages = ["home"]; // home.php exists in both pages/ and views/
-if (in_array($page, $views_pages) && file_exists("views/{$page}.php")) {
-    include "views/{$page}.php";
-} elseif (file_exists("pages/{$page}.php")) {
+if (file_exists("pages/{$page}.php")) {
     include "pages/{$page}.php";
 } else {
-    // Fallback
-    include "pages/home.php";
+    // Fallback to login
+    include "pages/login.php";
 }
 
 include "includes/footer.php";
