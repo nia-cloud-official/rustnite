@@ -1,269 +1,319 @@
-<?php if (!isset($_SESSION['user_id'])): ?>
-    <!-- Epic Landing Page -->
-    <div class="min-h-screen -mt-6 -mx-6 relative overflow-hidden">
-        <!-- Animated Background -->
-        <div class="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900">
-            <div class="absolute inset-0 opacity-20">
-                <div class="absolute top-20 left-20 w-72 h-72 bg-orange-500 rounded-full mix-blend-multiply filter blur-xl animate-pulse"></div>
-                <div class="absolute top-40 right-20 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl animate-pulse" style="animation-delay: 2s;"></div>
-                <div class="absolute bottom-20 left-1/2 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl animate-pulse" style="animation-delay: 4s;"></div>
+<?php if (!isset($_SESSION["user_id"])): ?>
+<?php
+$page_title = "Home";
+$languages = get_languages();
+$lang_count = count($languages); // Count users
+$stmt = $pdo->query("SELECT COUNT(*) as count FROM users");
+$total_users = $stmt->fetch()["count"];
+?>
+<!-- EPIC TWITCH-STYLE LANDING PAGE -->
+<div style="min-height:100vh; position:relative; overflow:hidden;">
+    <!-- Animated Grid Background -->
+    <div style="position:fixed; inset:0; z-index:0; overflow:hidden;">
+        <div id="landing-grid"></div>
+        <div style="position:absolute; inset:0; background:radial-gradient(ellipse at 50% 0%, rgba(145,71,255,0.15) 0%, transparent 70%);"></div>
+    </div>
+
+    <!-- Hero Content -->
+    <div style="position:relative; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; text-align:center; padding:40px 20px;">
+        <!-- Animated Logo -->
+        <div style="margin-bottom:32px; animation: bounce-in 1s ease-out;">
+            <div class="tw-logo" style="width:100px; height:100px; font-size:48px; margin:0 auto; box-shadow:0 0 60px rgba(145,71,255,0.3);">R</div>
+        </div>
+
+        <!-- Main Title with Glitch -->
+        <div style="animation: slide-up 0.8s ease-out; margin-bottom:16px;">
+            <h1 style="font-size:clamp(48px, 10vw, 120px); font-weight:900; line-height:1; letter-spacing:-2px;">
+                <span class="gradient-text">RUSTNITE</span>
+            </h1>
+            <div style="font-size:clamp(16px, 3vw, 32px); font-weight:300; color:#ADADB8; margin-top:8px; letter-spacing:4px; text-transform:uppercase;">
+                <span id="landing-typewriter"></span><span style="animation:pulse-ring 1s infinite;">|</span>
             </div>
         </div>
-        
-        <!-- Hero Section -->
-        <div class="relative z-10 min-h-screen flex items-center justify-center px-6">
-            <div class="text-center max-w-6xl mx-auto">
-                <!-- Main Title with Epic Animation -->
-                <div class="mb-8 relative">
-                    <h1 class="text-8xl md:text-9xl font-black mb-6 relative">
-                        <span class="bg-gradient-to-r from-orange-400 via-red-500 to-pink-500 bg-clip-text text-transparent animate-pulse">
-                            RUST
-                        </span>
-                        <span class="bg-gradient-to-r from-blue-400 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
-                            NITE
-                        </span>
-                    </h1>
-                    
-                    <!-- Subtitle with Typewriter Effect -->
-                    <div class="text-2xl md:text-3xl text-gray-300 mb-6 font-bold">
-                        <span id="typewriter"></span>
-                        <span class="animate-pulse">|</span>
-                    </div>
-                    
-                    <p class="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
-                        🚀 Drop into the ultimate coding arena where <span class="text-orange-400 font-bold">Rust mastery</span> 
-                        meets <span class="text-purple-400 font-bold">battle royale excitement</span>! 
-                        Compete, learn, and dominate the leaderboards! 🏆
-                    </p>
-                </div>
-                
-                <!-- Epic CTA Buttons -->
-                <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-8 mb-16">
-                    <a href="index.php?page=register" class="group relative px-12 py-6 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl font-black text-xl text-white transform hover:scale-110 transition-all duration-300 shadow-2xl hover:shadow-orange-500/50">
-                        <div class="absolute inset-0 bg-gradient-to-r from-orange-600 to-red-600 rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
-                        <div class="relative flex items-center">
-                            <i class="fas fa-rocket mr-3 text-2xl"></i>
-                            <span>ENTER THE ARENA</span>
-                        </div>
-                    </a>
-                    
-                    <a href="index.php?page=login" class="group px-12 py-6 border-3 border-purple-500 rounded-2xl font-bold text-xl text-purple-400 hover:bg-purple-500 hover:text-white transform hover:scale-105 transition-all duration-300">
-                        <i class="fas fa-sign-in-alt mr-3"></i>
-                        <span>REJOIN BATTLE</span>
-                    </a>
-                </div>
-                
-                <!-- Live Stats Counter -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
-                    <div class="text-center group">
-                        <div class="text-4xl md:text-5xl font-black text-orange-400 mb-2 group-hover:scale-110 transition-transform" id="warriors-count">0</div>
-                        <div class="text-gray-400 font-medium">🔥 WARRIORS</div>
-                    </div>
-                    <div class="text-center group">
-                        <div class="text-4xl md:text-5xl font-black text-blue-400 mb-2 group-hover:scale-110 transition-transform" id="challenges-count">0</div>
-                        <div class="text-gray-400 font-medium">⚔️ CHALLENGES</div>
-                    </div>
-                    <div class="text-center group">
-                        <div class="text-4xl md:text-5xl font-black text-green-400 mb-2 group-hover:scale-110 transition-transform" id="projects-count">0</div>
-                        <div class="text-gray-400 font-medium">🏗️ PROJECTS</div>
-                    </div>
-                    <div class="text-center group">
-                        <div class="text-4xl md:text-5xl font-black text-purple-400 mb-2 group-hover:scale-110 transition-transform">FREE</div>
-                        <div class="text-gray-400 font-medium">💎 FOREVER</div>
-                    </div>
-                </div>
-            </div>
+
+        <!-- Tagline -->
+        <p style="font-size:clamp(14px, 1.5vw, 20px); color:#ADADB8; max-width:600px; margin-bottom:40px; animation: slide-up 1s ease-out; line-height:1.6;">
+            The <span style="color:#9147FF; font-weight:600;">battle-royale coding arena</span> where you master
+            <span style="font-weight:600; color:#fff;">multiple programming languages</span> through
+            epic challenges, AI-powered tutoring, and real-time competition.
+        </p>
+
+        <!-- CTA Buttons -->
+        <div style="display:flex; gap:16px; flex-wrap:wrap; justify-content:center; animation: slide-up 1.2s ease-out;">
+            <a href="index.php?page=register" class="tw-btn tw-btn-primary tw-btn-lg" style="padding:16px 40px; font-size:18px; animation:pulse-glow 2s infinite;">
+                <i class="fas fa-rocket"></i>
+                Enter the Arena
+            </a>
+            <a href="index.php?page=login" class="tw-btn" style="padding:16px 40px; font-size:18px; background:rgba(145,71,255,0.1); border:1px solid rgba(145,71,255,0.3); color:#EFEFF1;">
+                <i class="fas fa-sign-in-alt"></i>
+                Rejoin Battle
+            </a>
         </div>
-        
-        <!-- Features Section -->
-        <div class="relative z-10 py-20 px-6">
-            <div class="max-w-7xl mx-auto">
-                <h2 class="text-5xl font-black text-center mb-4 bg-gradient-to-r from-orange-400 to-purple-500 bg-clip-text text-transparent">
-                    BATTLE-TESTED FEATURES
-                </h2>
-                <p class="text-xl text-gray-400 text-center mb-16 max-w-3xl mx-auto">
-                    Every feature designed to make you a Rust legend. No fluff, just pure coding power! 💪
-                </p>
-                
-                <div class="grid md:grid-cols-3 gap-8">
-                    <!-- Interactive Coding -->
-                    <div class="group relative p-8 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-3xl border border-gray-700 hover:border-orange-500/50 transition-all duration-300 hover:transform hover:scale-105">
-                        <div class="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div class="relative">
-                            <div class="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:rotate-12 transition-transform">
-                                <i class="fas fa-code text-3xl text-white"></i>
-                            </div>
-                            <h3 class="text-2xl font-bold mb-4 text-center">⚡ LIVE CODING</h3>
-                            <p class="text-gray-400 text-center leading-relaxed">
-                                Monaco editor with real-time compilation, instant feedback, and syntax highlighting. 
-                                Code like a pro from day one! 🎯
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <!-- Gamification -->
-                    <div class="group relative p-8 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-3xl border border-gray-700 hover:border-purple-500/50 transition-all duration-300 hover:transform hover:scale-105">
-                        <div class="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div class="relative">
-                            <div class="w-20 h-20 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:rotate-12 transition-transform">
-                                <i class="fas fa-trophy text-3xl text-white"></i>
-                            </div>
-                            <h3 class="text-2xl font-bold mb-4 text-center">🏆 EPIC REWARDS</h3>
-                            <p class="text-gray-400 text-center leading-relaxed">
-                                XP system, achievements, leaderboards, and badges. 
-                                Turn learning into an addictive game! 🎮
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <!-- Real Projects -->
-                    <div class="group relative p-8 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-3xl border border-gray-700 hover:border-green-500/50 transition-all duration-300 hover:transform hover:scale-105">
-                        <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div class="relative">
-                            <div class="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:rotate-12 transition-transform">
-                                <i class="fas fa-rocket text-3xl text-white"></i>
-                            </div>
-                            <h3 class="text-2xl font-bold mb-4 text-center">🚀 REAL BUILDS</h3>
-                            <p class="text-gray-400 text-center leading-relaxed">
-                                CLI tools, web servers, chat apps, and more. 
-                                Build portfolio-worthy projects that matter! 💼
-                            </p>
-                        </div>
-                    </div>
-                </div>
+
+        <!-- Live Stats -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:24px; max-width:800px; width:100%; margin-top:60px; animation: slide-up 1.4s ease-out;">
+            <div class="stat-item" style="background:rgba(30,30,40,0.5); backdrop-filter:blur(10px); border:1px solid rgba(145,71,255,0.15); padding:20px;">
+                <div class="stat-value" id="hero-warriors" style="font-size:36px; color:#9147FF;">0</div>
+                <div class="stat-label" style="font-size:12px; text-transform:uppercase; letter-spacing:1px;">Coders</div>
             </div>
-        </div>
-        
-        <!-- Call to Action -->
-        <div class="relative z-10 py-20 px-6">
-            <div class="max-w-4xl mx-auto text-center">
-                <div class="p-12 bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-3xl border border-gray-700 backdrop-blur-sm">
-                    <h2 class="text-4xl md:text-5xl font-black mb-6">
-                        <span class="bg-gradient-to-r from-orange-400 to-purple-500 bg-clip-text text-transparent">
-                            READY TO DOMINATE?
-                        </span>
-                    </h2>
-                    <p class="text-xl text-gray-300 mb-8 leading-relaxed">
-                        Join thousands of developers mastering Rust through epic challenges. 
-                        <br class="hidden md:block">
-                        <span class="text-orange-400 font-bold">Free forever.</span> 
-                        <span class="text-purple-400 font-bold">No credit card.</span> 
-                        <span class="text-green-400 font-bold">Pure learning.</span>
-                    </p>
-                    
-                    <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
-                        <a href="index.php?page=register" class="group relative px-10 py-4 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl font-bold text-lg text-white transform hover:scale-105 transition-all duration-300 shadow-xl">
-                            <i class="fas fa-play mr-3"></i>
-                            START LEARNING NOW
-                        </a>
-                        <a href="#features" class="px-10 py-4 border-2 border-gray-600 rounded-xl font-bold text-lg text-gray-300 hover:border-orange-500 hover:text-orange-400 transition-all duration-300">
-                            <i class="fas fa-info-circle mr-3"></i>
-                            LEARN MORE
-                        </a>
-                    </div>
-                </div>
+            <div class="stat-item" style="background:rgba(30,30,40,0.5); backdrop-filter:blur(10px); border:1px solid rgba(0,217,90,0.15); padding:20px;">
+                <div class="stat-value" id="hero-languages" style="font-size:36px; color:#00D95A;">0</div>
+                <div class="stat-label" style="font-size:12px; text-transform:uppercase; letter-spacing:1px;">Languages</div>
+            </div>
+            <div class="stat-item" style="background:rgba(30,30,40,0.5); backdrop-filter:blur(10px); border:1px solid rgba(255,215,0,0.15); padding:20px;">
+                <div class="stat-value" id="hero-challenges" style="font-size:36px; color:#FFD700;">0</div>
+                <div class="stat-label" style="font-size:12px; text-transform:uppercase; letter-spacing:1px;">Challenges</div>
+            </div>
+            <div class="stat-item" style="background:rgba(30,30,40,0.5); backdrop-filter:blur(10px); border:1px solid rgba(169,112,255,0.15); padding:20px;">
+                <div class="stat-value" style="font-size:36px; color:#A970FF;">Free</div>
+                <div class="stat-label" style="font-size:12px; text-transform:uppercase; letter-spacing:1px;">Forever</div>
             </div>
         </div>
     </div>
 
-    <style>
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-        }
-        
-        .animate-float {
-            animation: float 6s ease-in-out infinite;
-        }
-        
-        .border-3 {
-            border-width: 3px;
-        }
-    </style>
+    <!-- Language Strip -->
+    <div style="position:relative; z-index:10; padding:40px 20px; border-top:1px solid rgba(255,255,255,0.05); border-bottom:1px solid rgba(255,255,255,0.05); overflow:hidden;">
+        <div class="lang-scroll">
+            <div class="lang-scroll-inner">
+                <?php for ($repeat = 0; $repeat < 3; $repeat++): ?>
+                    <?php foreach ($languages as $lang): ?>
+                        <div class="lang-scroll-item">
+                            <i class="<?= $lang[
+                                "icon"
+                            ] ?>" style="color:<?= $lang[
+    "color"
+] ?>; font-size:24px;"></i>
+                            <span style="color:#ADADB8; font-weight:500;"><?= $lang[
+                                "name"
+                            ] ?></span>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endfor; ?>
+            </div>
+        </div>
+    </div>
 
-    <script>
-        // Typewriter effect
-        const phrases = [
-            "Battle-Royale Rust Learning 🔥",
-            "Master Systems Programming 💪", 
-            "Build Epic Projects 🚀",
-            "Compete & Dominate 🏆"
-        ];
-        
-        let phraseIndex = 0;
-        let charIndex = 0;
-        let isDeleting = false;
-        
-        function typeWriter() {
-            const currentPhrase = phrases[phraseIndex];
-            const typewriterElement = document.getElementById('typewriter');
-            
-            if (isDeleting) {
-                typewriterElement.textContent = currentPhrase.substring(0, charIndex - 1);
-                charIndex--;
+    <!-- Features Grid -->
+    <div style="position:relative; z-index:10; padding:80px 20px; max-width:1200px; margin:0 auto;">
+        <h2 style="text-align:center; font-size:clamp(28px, 4vw, 48px); font-weight:900; margin-bottom:60px;">
+            <span class="gradient-text">Battle-Tested Features</span>
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <?php
+            $features = [
+                [
+                    "icon" => "fa-graduation-cap",
+                    "title" => "Multi-Language",
+                    "desc" =>
+                        "Learn Rust, Python, JavaScript, Go, and more. Switch between languages seamlessly.",
+                    "color" => "#9147FF",
+                ],
+                [
+                    "icon" => "fa-crosshairs",
+                    "title" => "Battle Royale",
+                    "desc" =>
+                        "Real-time coding battles. Compete against other developers in live arena matches.",
+                    "color" => "#E9197B",
+                ],
+                [
+                    "icon" => "fa-robot",
+                    "title" => "AI Tutor",
+                    "desc" =>
+                        "Big Pickle AI assistant helps you debug, explains concepts, and guides your learning.",
+                    "color" => "#00D95A",
+                ],
+                [
+                    "icon" => "fa-gamepad",
+                    "title" => "Mini-Games",
+                    "desc" =>
+                        "Syntax speed races, bug hunts, output predictions - learning through play.",
+                    "color" => "#FF6B35",
+                ],
+                [
+                    "icon" => "fa-trophy",
+                    "title" => "Leaderboards",
+                    "desc" =>
+                        "Global rankings, weekly champions, language-specific leaderboards. Climb to the top!",
+                    "color" => "#FFD700",
+                ],
+                [
+                    "icon" => "fa-code",
+                    "title" => "Real Code Editor",
+                    "desc" =>
+                        "Monaco editor with multi-language support, real execution via Docker/Piston API.",
+                    "color" => "#A970FF",
+                ],
+            ];
+            foreach ($features as $f): ?>
+                <div class="tw-card tw-card-body feature-card" style="text-align:center; padding:32px; border-color:rgba(255,255,255,0.05);">
+                    <div style="width:64px; height:64px; border-radius:16px; background:<?= $f[
+                        "color"
+                    ] ?>15; display:flex; align-items:center; justify-content:center; margin:0 auto 20px;">
+                        <i class="fas <?= $f[
+                            "icon"
+                        ] ?>" style="font-size:28px; color:<?= $f[
+    "color"
+] ?>;"></i>
+                    </div>
+                    <h3 style="font-size:18px; font-weight:700; margin-bottom:8px;"><?= $f[
+                        "title"
+                    ] ?></h3>
+                    <p style="font-size:13px; color:#ADADB8; line-height:1.6;"><?= $f[
+                        "desc"
+                    ] ?></p>
+                </div>
+            <?php endforeach;
+            ?>
+        </div>
+    </div>
+
+    <!-- Final CTA -->
+    <div style="position:relative; z-index:10; padding:80px 20px; text-align:center;">
+        <div class="tw-card tw-card-body" style="max-width:600px; margin:0 auto; padding:48px; background:linear-gradient(135deg, rgba(145,71,255,0.1), rgba(233,25,123,0.05)); border-color:rgba(145,71,255,0.2);">
+            <div style="font-size:48px; margin-bottom:16px;">🔥</div>
+            <h2 style="font-size:32px; font-weight:900; margin-bottom:12px;" class="gradient-text">Ready to Dominate?</h2>
+            <p style="color:#ADADB8; margin-bottom:32px; font-size:16px;">
+                Join thousands of developers mastering multiple languages through epic battles.
+                <span style="color:#00D95A; font-weight:600;">Free forever.</span>
+                <span style="color:#9147FF; font-weight:600;">No credit card.</span>
+            </p>
+            <a href="index.php?page=register" class="tw-btn tw-btn-primary tw-btn-lg" style="padding:16px 48px; font-size:18px; animation:pulse-glow 2s infinite;">
+                <i class="fas fa-rocket"></i>
+                Start Your Journey
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Animated grid */
+    #landing-grid {
+        position: absolute;
+        inset: -50%;
+        width: 200%;
+        height: 200%;
+        background-image:
+            linear-gradient(rgba(145,71,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(145,71,255,0.03) 1px, transparent 1px);
+        background-size: 60px 60px;
+        animation: grid-scroll 20s linear infinite;
+        transform-origin: center;
+    }
+
+    @keyframes grid-scroll {
+        0% { transform: translate(0, 0) rotate(0deg); }
+        100% { transform: translate(-60px, -60px) rotate(1deg); }
+    }
+
+    /* Language scroll strip */
+    .lang-scroll {
+        overflow: hidden;
+        width: 100%;
+    }
+
+    .lang-scroll-inner {
+        display: flex;
+        gap: 40px;
+        animation: scroll-languages 30s linear infinite;
+        width: max-content;
+    }
+
+    .lang-scroll-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+        padding: 8px 16px;
+        border-radius: 8px;
+        background: rgba(30,30,40,0.3);
+        border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    @keyframes scroll-languages {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-33.33%); }
+    }
+
+    /* Feature cards */
+    .feature-card {
+        transition: all 0.3s ease;
+    }
+    .feature-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        border-color: rgba(145,71,255,0.3) !important;
+        box-shadow: 0 20px 40px rgba(145,71,255,0.1);
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Typewriter
+    const phrases = [
+        "Multi-Language Coding Arena 🔥",
+        "Battle-Royale Learning 💪",
+        "AI-Powered Tutoring 🚀",
+        "Compete & Dominate 🏆"
+    ];
+
+    let phraseIndex = 0;
+    let charIndex = 0;
+    let isDeleting = false;
+    const el = document.getElementById('landing-typewriter');
+
+    function typeWriter() {
+        if (!el) return;
+        const current = phrases[phraseIndex];
+
+        if (isDeleting) {
+            el.textContent = current.substring(0, charIndex - 1);
+            charIndex--;
+        } else {
+            el.textContent = current.substring(0, charIndex + 1);
+            charIndex++;
+        }
+
+        let speed = isDeleting ? 30 : 60;
+
+        if (!isDeleting && charIndex === current.length) {
+            speed = 2000;
+            isDeleting = true;
+        } else if (isDeleting && charIndex === 0) {
+            isDeleting = false;
+            phraseIndex = (phraseIndex + 1) % phrases.length;
+            speed = 300;
+        }
+
+        setTimeout(typeWriter, speed);
+    }
+
+    typeWriter();
+
+    // Animate counters
+    function animateCounter(id, target, duration = 2000) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const start = 0;
+        const increment = target / (duration / 16);
+        let current = start;
+
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= target) {
+                el.textContent = target;
+                clearInterval(timer);
             } else {
-                typewriterElement.textContent = currentPhrase.substring(0, charIndex + 1);
-                charIndex++;
+                el.textContent = Math.floor(current);
             }
-            
-            let typeSpeed = isDeleting ? 50 : 100;
-            
-            if (!isDeleting && charIndex === currentPhrase.length) {
-                typeSpeed = 2000;
-                isDeleting = true;
-            } else if (isDeleting && charIndex === 0) {
-                isDeleting = false;
-                phraseIndex = (phraseIndex + 1) % phrases.length;
-                typeSpeed = 500;
-            }
-            
-            setTimeout(typeWriter, typeSpeed);
-        }
-        
-        // Animated counters
-        function animateCounter(elementId, target, duration = 2000) {
-            const element = document.getElementById(elementId);
-            const start = 0;
-            const increment = target / (duration / 16);
-            let current = start;
-            
-            const timer = setInterval(() => {
-                current += increment;
-                if (current >= target) {
-                    element.textContent = target;
-                    clearInterval(timer);
-                } else {
-                    element.textContent = Math.floor(current);
-                }
-            }, 16);
-        }
-        
-        // Initialize animations
-        document.addEventListener('DOMContentLoaded', function() {
-            typeWriter();
-            
-            // Animate counters with delay
-            setTimeout(() => animateCounter('warriors-count', 1247), 500);
-            setTimeout(() => animateCounter('challenges-count', 20), 800);
-            setTimeout(() => animateCounter('projects-count', 6), 1100);
-        });
-        
-        // Smooth scrolling for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-            });
-        });
-    </script>
-<?php else: 
-    // Redirect logged-in users to dashboard
-    header('Location: index.php?page=dashboard');
-    exit;
-endif; ?>
+        }, 16);
+    }
+
+    setTimeout(() => animateCounter('hero-warriors', <?= $total_users ?:
+        42 ?>), 500);
+    setTimeout(() => animateCounter('hero-languages', <?= $lang_count ?>), 800);
+    setTimeout(() => animateCounter('hero-challenges', 20), 1100);
+});
+</script>
+
+<?php else:header("Location: index.php?page=dashboard");
+    exit();endif; ?>

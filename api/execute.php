@@ -1,240 +1,444 @@
 <?php
-// Enable error reporting for debugging
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set("display_errors", 1);
 
-require_once '../config.php';
-require_once '../includes/db.php';
-require_once '../includes/functions.php';
+require_once "../config.php";
+require_once "../includes/db.php";
+require_once "../includes/functions.php";
 
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
+header("Content-Type: application/json");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST");
+header("Access-Control-Allow-Headers: Content-Type");
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     http_response_code(405);
-    echo json_encode(['error' => 'Method not allowed']);
-    exit;
+    echo json_encode(["error" => "Method not allowed"]);
+    exit();
 }
 
-// Test response to make sure API is working
-if (isset($_GET['test'])) {
-    echo json_encode(['status' => 'API is working', 'timestamp' => time()]);
-    exit;
+// Test endpoint
+if (isset($_GET["test"])) {
+    echo json_encode([
+        "status" => "API is working",
+        "timestamp" => time(),
+        "version" => APP_VERSION,
+    ]);
+    exit();
 }
 
-$input = json_decode(file_get_contents('php://input'), true);
+$input = json_decode(file_get_contents("php://input"), true);
 
-// Log for debugging
-error_log("Execute API called with input: " . file_get_contents('php://input'));
-
-$code = $input['code'] ?? '';
-$lesson_id = (int)($input['lesson_id'] ?? 0);
+$code = $input["code"] ?? "";
+$lesson_id = (int) ($input["lesson_id"] ?? 0);
+$language_slug = $input["language"] ?? "rust";
 
 if (empty($code)) {
-    echo json_encode(['error' => 'No code provided']);
-    exit;
+    echo json_encode(["error" => "No code provided"]);
+    exit();
 }
 
-// Security: Basic code validation
-if (strpos($code, 'std::process') !== false || 
-    strpos($code, 'std::fs') !== false || 
-    strpos($code, 'std::net') !== false ||
-    strpos($code, 'unsafe') !== false) {
-    echo json_encode([
-        'error' => 'Code contains restricted operations',
-        'output' => 'Error: Code execution blocked for security reasons. Avoid using file system, network, or unsafe operations.'
-    ]);
-    exit;
+// Get language info
+$lang = get_language_by_slug($language_slug);
+if (!$lang) {
+    $lang = get_language_by_id(1); // Default to Rust
 }
 
-// Try Rust Playground API first
-$playground_result = execute_with_playground($code);
-if ($playground_result['success']) {
-    echo json_encode($playground_result);
-    exit;
+// Security: Basic code validation per language
+$restricted_patterns = get_restricted_patterns($language_slug);
+foreach ($restricted_patterns as $pattern) {
+    if (preg_match($pattern, $code)) {
+        echo json_encode([
+            "error" => "Code contains restricted operations",
+            "output" =>
+                "Error: Code execution blocked for security reasons. Avoid using file system, network, or unsafe operations.",
+            "stderr" => "Security violation detected",
+        ]);
+        exit();
+    }
 }
 
-// Fallback to local Docker execution if available
-$docker_result = execute_with_docker($code);
-if ($docker_result['success']) {
-    echo json_encode($docker_result);
-    exit;
+// Try external execution methods
+$result = execute_code($code, $lang);
+
+if ($result["success"]) {
+    echo json_encode($result);
+    exit();
 }
 
-// Final fallback to simulation
-echo json_encode(simulate_execution($code, $lesson_id));
+// Fallback to simulation
+echo json_encode(simulate_execution($code, $lesson_id, $lang));
 
-function execute_with_playground($code) {
+function get_restricted_patterns($language)
+{
+    $patterns = [
+        "rust" => [
+            "/std::process/i",
+            "/std::fs/i",
+            "/std::net/i",
+            "/unsafe\s*\{/i",
+            "/Command::new/i",
+            "/fs::/i",
+            "/net::/i",
+            "/std::os/i",
+        ],
+        "python" => [
+            "/import\s+os/i",
+            "/import\s+subprocess/i",
+            "/import\s+socket/i",
+            "/import\s+shutil/i",
+            "/import\s+sys\s*\.\s*/, /__import__/i",
+            '/open\(.*[\'\"].*\.\..*[\'\"]/i',
+            "/eval\s*\(/i",
+            "/exec\s*\(/i",
+            "/pickle/i",
+            "/marshal/i",
+        ],
+        "javascript" => [
+            '/require\s*\(\s*[\'"]fs[\'"]\s*\)/i',
+            '/require\s*\(\s*[\'"]child_process[\'"]\s*\)/i',
+            '/require\s*\(\s*[\'"]net[\'"]\s*\)/i',
+            "/process\./i",
+            "/global\./i",
+            "/eval\s*\(/i",
+            "/Function\s*\(/i",
+            "/import\s+.*\s+from/i",
+        ],
+        "typescript" => [
+            '/require\s*\(\s*[\'"]fs[\'"]\s*\)/i',
+            '/require\s*\(\s*[\'"]child_process[\'"]\s*\)/i',
+            "/process\./i",
+            "/eval\s*\(/i",
+        ],
+        "go" => [
+            '/import\s+"os"/i',
+            '/import\s+"net"/i',
+            '/import\s+"os\/exec"/i',
+            "/syscall\./i",
+            "/unsafe\./i",
+        ],
+        "java" => [
+            "/java\.io\./i",
+            "/java\.net\./i",
+            "/java\.nio\./i",
+            "/Runtime\.getRuntime/i",
+            "/ProcessBuilder/i",
+            "/File/i",
+            "/FileWriter/i",
+            "/FileReader/i",
+            "/Socket/i",
+            "/ServerSocket/i",
+        ],
+        "cpp" => [
+            "/#include\s*<.*fstream/i",
+            "/#include\s*<.*thread/i",
+            "/#include\s*<.*net/i",
+            "/#include\s*<.*sys/i",
+            "/system\s*\(/i",
+        ],
+        "c" => [
+            "/#include\s*<.*fstream/i",
+            "/#include\s*<.*thread/i",
+            "/#include\s*<.*net/i",
+            "/#include\s*<.*sys/i",
+            "/system\s*\(/i",
+            "/fork/i",
+            "/exec/i",
+        ],
+    ];
+
+    return $patterns[$language] ?? $patterns["rust"];
+}
+
+function execute_code($code, $lang)
+{
+    // Try Rust Playground API for Rust
+    if ($lang["slug"] === "rust") {
+        $result = execute_with_playground($code);
+        if ($result["success"]) {
+            return $result;
+        }
+    }
+
+    // Try Docker for any language
+    $result = execute_with_docker($code, $lang);
+    if ($result["success"]) {
+        return $result;
+    }
+
+    // Try Piston API for multi-language
+    $result = execute_with_piston($code, $lang);
+    if ($result["success"]) {
+        return $result;
+    }
+
+    return ["success" => false];
+}
+
+function execute_with_playground($code)
+{
     $payload = json_encode([
-        'channel' => 'stable',
-        'mode' => 'debug',
-        'edition' => '2021',
-        'crateType' => 'bin',
-        'tests' => false,
-        'code' => $code,
-        'backtrace' => false
+        "channel" => "stable",
+        "mode" => "debug",
+        "edition" => "2021",
+        "crateType" => "bin",
+        "tests" => false,
+        "code" => $code,
+        "backtrace" => false,
     ]);
-    
-    $ch = curl_init('https://play.rust-lang.org/execute');
+
+    $ch = curl_init("https://play.rust-lang.org/execute");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Content-Length: ' . strlen($payload)
+        "Content-Type: application/json",
+        "Content-Length: " . strlen($payload),
     ]);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    
+
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    
+
     if ($http_code === 200 && $response) {
         $result = json_decode($response, true);
-        
-        if (isset($result['success']) && $result['success']) {
+        if (isset($result["success"])) {
             return [
-                'success' => true,
-                'output' => $result['stdout'] ?? '',
-                'stderr' => $result['stderr'] ?? '',
-                'execution_time' => 'Real execution via Rust Playground'
-            ];
-        } else {
-            return [
-                'success' => true,
-                'output' => '',
-                'stderr' => $result['stderr'] ?? 'Compilation failed',
-                'execution_time' => 'Compilation error'
+                "success" => true,
+                "output" => $result["stdout"] ?? "",
+                "stderr" => $result["stderr"] ?? "",
+                "execution_time" => "Rust Playground",
             ];
         }
     }
-    
-    return ['success' => false];
+
+    return ["success" => false];
 }
 
-function execute_with_docker($code) {
-    // Check if Docker is available
-    $docker_check = shell_exec('which docker 2>/dev/null');
+function execute_with_docker($code, $lang)
+{
+    $docker_check = shell_exec("which docker 2>/dev/null");
     if (empty($docker_check)) {
-        return ['success' => false];
+        return ["success" => false];
     }
-    
-    // Create temporary file
-    $temp_dir = sys_get_temp_dir() . '/rustnite_' . uniqid();
+
+    $temp_dir = sys_get_temp_dir() . "/rustnite_" . uniqid();
     mkdir($temp_dir, 0755, true);
-    $rust_file = $temp_dir . '/main.rs';
-    file_put_contents($rust_file, $code);
-    
-    // Execute with Docker (timeout after 5 seconds)
+
+    $ext = $lang["extension"] ?? ".rs";
+    $source_file = $temp_dir . "/main" . $ext;
+    file_put_contents($source_file, $code);
+
+    $docker_image = $lang["docker_image"] ?? "rust:1.70";
+
+    // Build appropriate command
+    $compile_cmd = $lang["compiler_command"] ?? "";
+    $run_cmd = $lang["run_command"] ?? "";
+
+    $full_cmd = "";
+    if ($compile_cmd) {
+        $full_cmd = "{$compile_cmd} && {$run_cmd}";
+    } else {
+        $full_cmd = $run_cmd;
+    }
+
+    if (empty($full_cmd)) {
+        return ["success" => false];
+    }
+
     $cmd = sprintf(
-        'timeout 5s docker run --rm -v %s:/app -w /app rust:1.70 sh -c "rustc main.rs && ./main" 2>&1',
-        escapeshellarg($temp_dir)
+        "timeout 10s docker run --rm -v %s:/app -w /app %s sh -c %s 2>&1",
+        escapeshellarg($temp_dir),
+        escapeshellarg($docker_image),
+        escapeshellarg($full_cmd),
     );
-    
+
     $start_time = microtime(true);
     $output = shell_exec($cmd);
     $execution_time = round((microtime(true) - $start_time) * 1000, 2);
-    
+
     // Cleanup
-    unlink($rust_file);
+    array_map("unlink", glob($temp_dir . "/*"));
     rmdir($temp_dir);
-    
+
     if ($output !== null) {
         return [
-            'success' => true,
-            'output' => $output,
-            'stderr' => '',
-            'execution_time' => $execution_time . 'ms (Docker)'
+            "success" => true,
+            "output" => $output,
+            "stderr" => "",
+            "execution_time" => $execution_time . "ms (Docker)",
         ];
     }
-    
-    return ['success' => false];
+
+    return ["success" => false];
 }
 
-function simulate_execution($code, $lesson_id) {
+function execute_with_piston($code, $lang)
+{
+    $language_map = [
+        "rust" => "rust",
+        "python" => "python3",
+        "javascript" => "javascript",
+        "typescript" => "typescript",
+        "go" => "go",
+        "java" => "java",
+        "cpp" => "cpp",
+        "c" => "c",
+    ];
+
+    $piston_lang = $language_map[$lang["slug"]] ?? "rust";
+
+    $payload = json_encode([
+        "language" => $piston_lang,
+        "source" => $code,
+    ]);
+
+    $ch = curl_init("https://emkc.org/api/v2/piston/execute");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($http_code === 200 && $response) {
+        $result = json_decode($response, true);
+        if (isset($result["run"])) {
+            $output = $result["run"]["stdout"] ?? "";
+            $stderr = $result["run"]["stderr"] ?? "";
+
+            if ($result["run"]["code"] !== 0 && empty($output)) {
+                $stderr = $result["compile"]["stderr"] ?? $stderr;
+            }
+
+            return [
+                "success" => true,
+                "output" => $output,
+                "stderr" => $stderr,
+                "execution_time" => "Piston API",
+            ];
+        }
+    }
+
+    return ["success" => false];
+}
+
+function simulate_execution($code, $lesson_id, $lang)
+{
     global $pdo;
-    
-    // Get expected output for comparison
-    $expected_output = '';
+
+    $expected_output = "";
     if ($lesson_id > 0) {
-        $stmt = $pdo->prepare("SELECT expected_output FROM lessons WHERE id = ?");
+        $stmt = $pdo->prepare(
+            "SELECT expected_output FROM lessons WHERE id = ?",
+        );
         $stmt->execute([$lesson_id]);
-        $expected_output = $stmt->fetchColumn() ?: '';
+        $expected_output = $stmt->fetchColumn() ?: "";
     }
-    
+
     $output = "=== SIMULATION MODE ===\n";
-    $output .= "Note: This is simulated execution. For real compilation, Docker or Rust Playground integration is needed.\n\n";
-    
-    // Basic syntax checking
-    if (!preg_match('/fn\s+main\s*\(\s*\)/', $code)) {
-        return [
-            'success' => true,
-            'output' => '',
-            'stderr' => 'error: `main` function not found in crate `main`',
-            'execution_time' => 'Simulation'
-        ];
+    $output .= "Note: Real execution requires Docker or Piston API.\n";
+    $output .= "Language: {$lang["name"]}\n\n";
+
+    // Basic syntax detection per language
+    switch ($lang["slug"]) {
+        case "rust":
+            if (!preg_match("/fn\s+main\s*\(\s*\)/", $code)) {
+                return [
+                    "success" => true,
+                    "output" => "",
+                    "stderr" => "error: `main` function not found",
+                    "execution_time" => "Simulation",
+                ];
+            }
+            preg_match_all(
+                '/println!\s*\(\s*"([^"]*)"(?:\s*,\s*([^)]*))?\s*\)/',
+                $code,
+                $matches,
+            );
+            break;
+
+        case "python":
+            preg_match_all(
+                '/print\s*\(\s*["\']([^"\']*)["\']\s*\)/',
+                $code,
+                $matches,
+            );
+            break;
+
+        case "javascript":
+        case "typescript":
+            preg_match_all(
+                '/console\.log\s*\(\s*["\']([^"\']*)["\']\s*\)/',
+                $code,
+                $matches,
+            );
+            break;
+
+        case "go":
+            preg_match_all(
+                '/fmt\.Println\s*\(\s*["\']([^"\']*)["\']\s*\)/',
+                $code,
+                $matches,
+            );
+            break;
+
+        case "java":
+            preg_match_all(
+                '/System\.out\.println\s*\(\s*["\']([^"\']*)["\']\s*\)/',
+                $code,
+                $matches,
+            );
+            break;
+
+        case "cpp":
+        case "c":
+            preg_match_all(
+                '/printf\s*\(\s*["\']([^"\']*)["\']\s*\)/',
+                $code,
+                $matches,
+            );
+            break;
+
+        default:
+            preg_match_all(
+                '/print.*\(.*["\']([^"\']*)["\'].*\)/',
+                $code,
+                $matches,
+            );
     }
-    
-    // Extract println! statements
-    preg_match_all('/println!\s*\(\s*"([^"]*)"(?:\s*,\s*([^)]*))?\s*\)/', $code, $matches);
-    
+
     if (!empty($matches[1])) {
         $output .= "Program output:\n";
-        foreach ($matches[1] as $i => $text) {
-            // Handle format arguments
-            if (!empty($matches[2][$i])) {
-                $args = explode(',', $matches[2][$i]);
-                $formatted_text = $text;
-                foreach ($args as $j => $arg) {
-                    $arg = trim($arg);
-                    // Simple variable substitution
-                    if (preg_match('/(\w+)/', $arg, $var_match)) {
-                        $var_name = $var_match[1];
-                        // Try to find variable value in code
-                        if (preg_match('/let\s+' . $var_name . '\s*=\s*([^;]+)/', $code, $val_match)) {
-                            $value = trim($val_match[1]);
-                            $value = trim($value, '"\'');
-                            $formatted_text = str_replace('{}', $value, $formatted_text);
-                        }
-                    }
-                }
-                $output .= $formatted_text . "\n";
-            } else {
-                $output .= $text . "\n";
-            }
+        foreach ($matches[1] as $text) {
+            $output .= $text . "\n";
         }
     } else {
         $output .= "Program compiled successfully!\n";
-        $output .= "(No println! statements found)\n";
     }
-    
-    // Compare with expected output
+
     if ($expected_output) {
         $output .= "\n--- Expected vs Actual ---\n";
-        $output .= "Expected: " . $expected_output . "\n";
-        
-        $actual_lines = [];
-        foreach ($matches[1] as $text) {
-            $actual_lines[] = $text;
-        }
+        $actual_lines = $matches[1] ?? [];
         $actual_output = implode("\n", $actual_lines);
-        
+        $output .= "Expected: " . $expected_output . "\n";
         $output .= "Actual: " . $actual_output . "\n";
-        
+
         if (trim($actual_output) === trim($expected_output)) {
             $output .= "✅ Output matches expected result!\n";
         } else {
             $output .= "❌ Output doesn't match expected result.\n";
         }
     }
-    
+
     return [
-        'success' => true,
-        'output' => $output,
-        'stderr' => '',
-        'execution_time' => 'Simulation'
+        "success" => true,
+        "output" => $output,
+        "stderr" => "",
+        "execution_time" => "Simulation",
     ];
 }
-?>
