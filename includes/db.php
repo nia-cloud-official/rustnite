@@ -264,6 +264,7 @@ CREATE TABLE IF NOT EXISTS daily_challenges (
     FOREIGN KEY (language_id) REFERENCES languages(id),
     UNIQUE KEY unique_date (date)
 );
+");
 
 // ============== MIGRATIONS: Add missing columns to existing tables ==============
 // These run after CREATE TABLE IF NOT EXISTS to handle existing tables that don't have new columns
@@ -295,10 +296,10 @@ if ($stmt->fetch()["count"] == 0) {
         ('Python', 'python', 'fab fa-python', '#3776AB', '.py', 'print(\"Hello, World!\")', 'python:3.11', 'python3 -m py_compile main.py', 'python3 main.py', 2),
         ('JavaScript', 'javascript', 'fab fa-js', '#F7DF1E', '.js', 'console.log(\"Hello, World!\");', 'node:18', 'node --check main.js', 'node main.js', 3),
         ('TypeScript', 'typescript', 'fab fa-typescript', '#3178C6', '.ts', 'const greeting: string = \"Hello, World!\";\nconsole.log(greeting);', 'node:18', 'npx tsc --noEmit main.ts', 'node main.js', 4),
-        ('Go', 'go', 'fab fa-golang', '#00ADD8', '.go', 'package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, World!")\n}', 'golang:1.21', 'go build -o main main.go', './main', 5),
-        ('Java', 'java', 'fab fa-java', '#ED8B00', '.java', 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}', 'openjdk:17', 'javac Main.java', 'java Main', 6),
-        ('C++', 'cpp', 'fas fa-copyright', '#00599C', '.cpp', '#include <iostream>\nusing namespace std;\nint main() {\n    cout << "Hello, World!" << endl;\n    return 0;\n}', 'gcc:12', 'g++ -o main main.cpp', './main', 7),
-        ('C', 'c', 'fas fa-copyright', '#A8B9CC', '.c', '#include <stdio.h>\nint main() {\n    printf("Hello, World!");\n    return 0;\n}', 'gcc:12', 'gcc -o main main.c', './main', 8);
+        ('Go', 'go', 'fab fa-golang', '#00ADD8', '.go', 'package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"Hello, World!\")\n}', 'golang:1.21', 'go build -o main main.go', './main', 5),
+        ('Java', 'java', 'fab fa-java', '#ED8B00', '.java', 'public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n}', 'openjdk:17', 'javac Main.java', 'java Main', 6),
+        ('C++', 'cpp', 'fas fa-copyright', '#00599C', '.cpp', '#include <iostream>\nusing namespace std;\nint main() {\n    cout << \"Hello, World!\" << endl;\n    return 0;\n}', 'gcc:12', 'g++ -o main main.cpp', './main', 7),
+        ('C', 'c', 'fas fa-copyright', '#A8B9CC', '.c', '#include <stdio.h>\nint main() {\n    printf(\"Hello, World!\");\n    return 0;\n}', 'gcc:12', 'gcc -o main main.c', './main', 8);
     ");
 }
 
@@ -328,8 +329,6 @@ if ($stmt->fetch()["count"] == 0) {
         ('Polyglot', 'Complete lessons in 5 different languages', 'fas fa-globe', 'language_master', 5, 'language');
     ");
 }
-
-
 
 // Seed mini-games if empty
 $stmt = $pdo->query("SELECT COUNT(*) as count FROM mini_games");
