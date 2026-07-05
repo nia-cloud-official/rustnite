@@ -297,7 +297,10 @@ if ($stmt->fetch()["count"] == 0) {
         ('Python', 'python', 'fab fa-python', '#3776AB', '.py', 'print(\"Hello, World!\")', 'python:3.11', 'python3 -m py_compile main.py', 'python3 main.py', 2),
         ('JavaScript', 'javascript', 'fab fa-js', '#F7DF1E', '.js', 'console.log(\"Hello, World!\");', 'node:18', 'node --check main.js', 'node main.js', 3),
         ('TypeScript', 'typescript', 'fab fa-typescript', '#3178C6', '.ts', 'const greeting: string = \"Hello, World!\";\nconsole.log(greeting);', 'node:18', 'npx tsc --noEmit main.ts', 'node main.js', 4),
-        ('Go', 'go', 'fab fa-golang', '#00ADD8', '.go', 'package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"Hello, World!\")\n}', 'golang:1.21', 'go build -o main main.go', './main', 5);
+        ('Go', 'go', 'fab fa-golang', '#00ADD8', '.go', 'package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, World!")\n}', 'golang:1.21', 'go build -o main main.go', './main', 5),
+        ('Java', 'java', 'fab fa-java', '#ED8B00', '.java', 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n    }\n}', 'openjdk:17', 'javac Main.java', 'java Main', 6),
+        ('C++', 'cpp', 'fas fa-copyright', '#00599C', '.cpp', '#include <iostream>\nusing namespace std;\nint main() {\n    cout << "Hello, World!" << endl;\n    return 0;\n}', 'gcc:12', 'g++ -o main main.cpp', './main', 7),
+        ('C', 'c', 'fas fa-copyright', '#A8B9CC', '.c', '#include <stdio.h>\nint main() {\n    printf("Hello, World!");\n    return 0;\n}', 'gcc:12', 'gcc -o main main.c', './main', 8);
     ");
 }
 
@@ -326,6 +329,21 @@ if ($stmt->fetch()["count"] == 0) {
         ('Language Master', 'Complete lessons in 3 different languages', 'fas fa-language', 'language_master', 3, 'language'),
         ('Polyglot', 'Complete lessons in 5 different languages', 'fas fa-globe', 'language_master', 5, 'language');
     ");
+}
+
+// Seed lessons if empty
+$stmt = $pdo->query("SELECT COUNT(*) as count FROM lessons");
+if ($stmt->fetch()["count"] == 0) {
+    $lesson_sql = "INSERT INTO lessons (language_id, title, description, content, code_template, starter_code, expected_output, difficulty, category, xp_reward, order_num) VALUES
+    (1, 'Variables & Data Types', 'Learn how to declare variables and understand Rust\'s type system', 'Variables are fundamental to programming. In Rust, variables are immutable by default.', 'fn main() {\n    // Your code here\n}', 'fn main() {\n    let x = 5;\n    println!(\"x = {}\", x);\n}', 'x = 5', 'beginner', 'basics', 100, 1),
+    (2, 'Variables in Python', 'Learn Python variables - dynamic typing made simple', 'Python variables are dynamically typed and don\'t require explicit type declarations.', '# Write your code here', 'x = 5\nprint(f\"x = {x}\")', 'x = 5', 'beginner', 'basics', 100, 1),
+    (3, 'JavaScript Basics', 'Learn JavaScript variables and data types', 'JavaScript has dynamic typing with let, const, and var declarations.', '// Your code here', 'let x = 5;\nconsole.log(\"x = \" + x);', 'x = 5', 'beginner', 'basics', 100, 1),
+    (4, 'TypeScript Types', 'Master TypeScript\'s type system', 'TypeScript adds static typing to JavaScript for better tooling and error catching.', '// Your code here', 'let x: number = 5;\nconsole.log(\"x = \" + x);', 'x = 5', 'beginner', 'basics', 100, 1),
+    (5, 'Go Variables', 'Learn Go variable declarations', 'Go uses explicit typing with a clean syntax for variable declarations.', '// Your code here', 'package main\nimport \"fmt\"\nfunc main() {\n    x := 5\n    fmt.Printf(\"x = %d\", x)\n}', 'x = 5', 'beginner', 'basics', 100, 1),
+    (6, 'Java Variables', 'Master Java variable declarations', 'Java is statically typed and requires explicit type declarations.', '// Your code here', 'public class Main {\n    public static void main(String[] args) {\n        int x = 5;\n        System.out.println(\"x = \" + x);\n    }\n}', 'x = 5', 'beginner', 'basics', 100, 1),
+    (7, 'C++ Variables', 'Learn C++ variable types', 'C++ is statically typed with multiple integer and floating-point types.', '// Your code here', '#include <iostream>\nusing namespace std;\nint main() {\n    int x = 5;\n    cout << \"x = \" << x << endl;\n    return 0;\n}', 'x = 5', 'beginner', 'basics', 100, 1),
+    (8, 'C Variables', 'Learn C variable declarations', 'C is a statically typed language with a straightforward type system.', '// Your code here', '#include <stdio.h>\nint main() {\n    int x = 5;\n    printf(\"x = %d\", x);\n    return 0;\n}', 'x = 5', 'beginner', 'basics', 100, 1);";
+    $pdo->exec($lesson_sql);
 }
 
 // Seed mini-games if empty
