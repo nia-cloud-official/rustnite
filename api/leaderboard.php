@@ -1,46 +1,37 @@
 <?php
-require_once '../config.php';
-require_once '../includes/db.php';
-require_once '../includes/functions.php';
+require_once "../config.php";
+require_once "../includes/db.php";
+require_once "../includes/functions.php";
 
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+header("Content-Type: application/json");
+header("Access-Control-Allow-Origin: *");
+
+$language_id = (int) ($_GET["language"] ?? 0);
+$limit = min(100, max(1, (int) ($_GET["limit"] ?? 50)));
 
 try {
-    // Get leaderboard data with real-time stats
-    $stmt = $pdo->prepare("
-        SELECT 
-            u.id,
-            u.username,
-            u.xp,
-            u.level,
-            u.created_at,
-            COUNT(DISTINCT up.lesson_id) as lessons_completed,
-            COUNT(DISTINCT CASE WHEN up.completed_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN up.lesson_id END) as weekly_lessons,
-            COUNT(DISTINCT CASE WHEN up.completed_at >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN up.lesson_id END) as daily_lessons,
-            MAX(up.completed_at) as last_activity,
-            (SELECT COUNT(*) + 1 FROM users u2 WHERE u2.xp > u.xp) as rank_position
-        FROM users u
-        LEFT JOIN user_progress up ON u.id = up.user_id AND up.completed = 1
-        GROUP BY u.id, u.username, u.xp, u.level, u.created_at
-        ORDER BY u.xp DESC, u.created_at ASC
-        LIMIT 50
-    ");
-    $stmt->execute();
-    $leaderboard = $stmt->fetchAll();
+    if ($language_id > 0) {
+        $leaderboard = get_language_leaderboard($language_id, $limit);
+    } else {
+        $leaderboard = get_leaderboard($limit);
+    }
 
     // Get recent activity
     $stmt = $pdo->prepare("
-        SELECT 
+        SELECT
             u.username,
             l.title as lesson_title,
             l.difficulty,
             l.xp_reward,
+            lang.name as language_name,
+            lang.icon as language_icon,
+            lang.color as language_color,
             up.completed_at,
             'lesson_completed' as activity_type
         FROM user_progress up
         JOIN users u ON up.user_id = u.id
         JOIN lessons l ON up.lesson_id = l.id
+        JOIN languages lang ON l.language_id = lang.id
         WHERE up.completed = 1 AND up.completed_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
         ORDER BY up.completed_at DESC
         LIMIT 10
@@ -50,16 +41,15 @@ try {
 
     // Get weekly champions
     $stmt = $pdo->prepare("
-        SELECT 
-            u.username,
-            u.xp,
+        SELECT
+            u.id, u.username, u.xp, u.level,
             COUNT(DISTINCT up.lesson_id) as weekly_lessons,
             SUM(l.xp_reward) as weekly_xp
         FROM users u
         JOIN user_progress up ON u.id = up.user_id
         JOIN lessons l ON up.lesson_id = l.id
         WHERE up.completed = 1 AND up.completed_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        GROUP BY u.id, u.username, u.xp
+        GROUP BY u.id, u.username, u.xp, u.level
         HAVING weekly_lessons > 0
         ORDER BY weekly_xp DESC, weekly_lessons DESC
         LIMIT 5
@@ -68,17 +58,17 @@ try {
     $weekly_champions = $stmt->fetchAll();
 
     echo json_encode([
-        'success' => true,
-        'leaderboard' => $leaderboard,
-        'recent_activity' => $recent_activity,
-        'weekly_champions' => $weekly_champions,
-        'timestamp' => time()
+        "success" => true,
+        "leaderboard" => $leaderboard,
+        "recent_activity" => $recent_activity,
+        "weekly_champions" => $weekly_champions,
+        "language_id" => $language_id,
+        "timestamp" => time(),
+        "version" => APP_VERSION,
     ]);
-
 } catch (Exception $e) {
     echo json_encode([
-        'success' => false,
-        'error' => 'Failed to fetch leaderboard data'
+        "success" => false,
+        "error" => "Failed to fetch leaderboard data",
     ]);
 }
-?>
