@@ -41,6 +41,15 @@ define("AI_TUTOR_MODEL", "big-pickle");
 define("AI_TUTOR_MAX_TOKENS", 1024);
 define("AI_TUTOR_TEMPERATURE", 0.7);
 
+// OpenCode API Configuration
+// Get your API key from https://opencode.com
+// Leave OPENCODE_API_KEY empty to use built-in AI responses (fallback mode)
+define(
+    "OPENCODE_API_KEY",
+    "sk-A4roVvunrQ1woG7zQFWIUO0XIUIV46vFEDib6Ezh2zccwWs5EbnjukJv5hzu6Uby",
+); // <-- SET YOUR API KEY HERE
+define("OPENCODE_API_URL", "https://api.opencode.com/v1/chat/completions"); // OpenAI-compatible endpoint
+
 // Supported languages
 define("DEFAULT_LANGUAGE", 1); // Rust
 $SUPPORTED_LANGUAGES = [

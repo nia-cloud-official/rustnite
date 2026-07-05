@@ -745,12 +745,78 @@ function ask_ai_tutor($chat_id, $user_id, $message)
 
 function generate_ai_response($context, $language)
 {
-    // Big Pickle AI - built-in intelligence
-    // Enhanced response generation with code examples and explanations
+    // Try the OpenCode API first if configured
+    if (defined("OPENCODE_API_KEY") && !empty(OPENCODE_API_KEY)) {
+        $response = call_opencode_api($context, $language);
+        if ($response !== null) {
+            return $response;
+        }
+    }
 
+    // Fallback: Big Pickle AI built-in intelligence
+    // Only used when no API key is configured or API call fails
+    return generate_fallback_response($context, $language);
+}
+
+function call_opencode_api($context, $language)
+{
+    $messages = [
+        [
+            "role" => "system",
+            "content" =>
+                "You are Big Pickle, an expert programming tutor for the Rustnite coding platform. " .
+                "You help users learn to code in various languages including Rust, Python, JavaScript, TypeScript, Go, Java, C++, and C. " .
+                "Provide clear, concise explanations with working code examples. " .
+                "Be encouraging and educational. Keep responses focused and practical. " .
+                "Current language context: {$language}.",
+        ],
+        [
+            "role" => "user",
+            "content" => $context,
+        ],
+    ];
+
+    $payload = json_encode([
+        "model" => AI_TUTOR_MODEL,
+        "messages" => $messages,
+        "max_tokens" => AI_TUTOR_MAX_TOKENS,
+        "temperature" => AI_TUTOR_TEMPERATURE,
+    ]);
+
+    $ch = curl_init(OPENCODE_API_URL);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Content-Type: application/json",
+        "Authorization: Bearer " . OPENCODE_API_KEY,
+    ]);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($http_code === 200 && $response) {
+        $result = json_decode($response, true);
+        if (isset($result["choices"][0]["message"]["content"])) {
+            return $result["choices"][0]["message"]["content"];
+        }
+        // Some APIs use different response format
+        if (isset($result["response"])) {
+            return $result["response"];
+        }
+    }
+
+    return null; // Fallback to built-in
+}
+
+function generate_fallback_response($context, $language)
+{
     $lower_context = strtolower($context);
 
-    // Detect question type
     $is_explanation = preg_match(
         "/\b(what is|explain|how does|tell me about|define|describe)\b/",
         $lower_context,
@@ -767,16 +833,11 @@ function generate_ai_response($context, $language)
         "/\b(best practice|style|convention|idiomatic|proper)\b/",
         $lower_context,
     );
-    $is_mini_game = preg_match(
-        "/\b(create mini game|generate game|mini-game|make a game|new game|gamedev|game idea)\b/",
-        $lower_context,
-    );
     $is_mini_game_create = preg_match(
         "/\b(create|generate|make|new)\b.*\b(mini.game|game|challenge)\b/",
         $lower_context,
     );
 
-    // Extract code from user message
     preg_match('/```(\w+)?\n(.*?)```/s', $context, $user_code);
     $has_code = !empty($user_code);
 
@@ -806,60 +867,6 @@ function generate_ai_response($context, $language)
         $response .= "- Use proper error handling for edge cases\n\n";
         $response .=
             "Try implementing these changes and run your code again! 💪";
-    } elseif ($is_explanation) {
-        $response = "Great question! Let me break this down:\n\n";
-        $response .= "## Concept Overview\n\n";
-        $response .=
-            "This is a fundamental concept in programming that helps you write better, more efficient code.\n\n";
-        $response .= "### Why It Matters\n";
-        $response .= "- Improves code readability and maintainability\n";
-        $response .= "- Helps prevent common bugs and errors\n";
-        $response .= "- Makes your code more efficient and performant\n\n";
-        $response .= "### Example\n";
-        $response .= "```{$language}\n";
-        $response .=
-            "// Here's a practical example to illustrate this concept\n";
-        $response .= "// Try running this code to see how it works!\n";
-        $response .= "```\n\n";
-        $response .= "### Pro Tip 💡\n";
-        $response .=
-            "Practice this concept with small exercises first, then gradually increase complexity. ";
-        $response .=
-            "The key is understanding the *why* behind the pattern, not just memorizing syntax.\n\n";
-        $response .= "Want me to elaborate on any specific part?";
-    } elseif ($is_example) {
-        $response = "Here's a practical example you can work with:\n\n";
-        $response .= "```{$language}\n";
-        $response .= "// Practical example demonstrating this concept\n";
-        $response .= "// Feel free to modify and experiment!\n";
-        $response .= "```\n\n";
-        $response .= "**Try This Challenge:**\n";
-        $response .= "1. First, run the code as-is to see the output\n";
-        $response .=
-            "2. Then try modifying the values to see how behavior changes\n";
-        $response .=
-            "3. Finally, try extending it with additional functionality\n\n";
-        $response .= "Let me know what happens or if you have questions! 🚀";
-    } elseif ($is_best_practice) {
-        $response =
-            "Excellent question about best practices! Here are the key conventions:\n\n";
-        $response .= "## Best Practices\n\n";
-        $response .= "### ✅ Do:\n";
-        $response .= "- Use meaningful variable and function names\n";
-        $response .= "- Keep functions small and focused on a single task\n";
-        $response .= "- Write comments explaining *why*, not *what*\n";
-        $response .= "- Handle errors gracefully\n\n";
-        $response .= "### ❌ Avoid:\n";
-        $response .= "- Magic numbers (use named constants)\n";
-        $response .= "- Deep nesting (refactor into smaller functions)\n";
-        $response .= "- Code duplication (follow DRY principle)\n\n";
-        $response .= "### Example\n";
-        $response .= "```{$language}\n";
-        $response .= "// Bad practice\n";
-        $response .= "// Good practice\n";
-        $response .= "```\n\n";
-        $response .=
-            "Remember: Clean code is not just for computers - it's for humans too! 👨‍💻";
     } elseif ($is_mini_game_create) {
         $response = "🎮 **Mini-Game Creation!**\n\n";
         $response .= "I can help you create coding mini-games! Here's how:\n\n";
@@ -869,14 +876,12 @@ function generate_ai_response($context, $language)
         $response .=
             "- **Language**: Rust, Python, JavaScript, TypeScript, Go, Java, C++, or C\n";
         $response .=
-            "- **Game Type**: Syntax Speed, Bug Hunt, or Output Prediction\n";
+            "- **Game Type**: Syntax Speed, Bug Hunt, Output Prediction, or Code Race\n";
         $response .=
             "- **Difficulty**: Beginner, Intermediate, or Advanced\n\n";
         $response .=
             "The AI will create a brand new game with fresh questions and challenges! 🚀\n\n";
         $response .= "```{$language}\n";
-        $response .= "// Here's a mini-game idea you can try\n";
-        $response .= "// Create a syntax speed challenge for: {$language}\n";
         $response .= "// Generate it from the Mini-Games page!\n";
         $response .= "```";
     } else {
