@@ -77,6 +77,7 @@ if (
                     <option value="syntax_speed">Syntax Speed</option>
                     <option value="bug_hunt">Bug Hunt</option>
                     <option value="output_prediction">Output Prediction</option>
+                    <option value="code_race">Code Race</option>
                 </select>
             </div>
             <div>

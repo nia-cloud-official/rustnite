@@ -487,6 +487,161 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["submit_score"])) {
                 }
                 </script>
 
+            <?php elseif ($game["type"] === "code_race"): ?>
+                <!-- Code Race Game -->
+                <div id="code-race-game">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="text-lg font-bold">Score: <span id="cr-score" style="color:#9147FF;">0</span></div>
+                        <div class="text-lg font-bold">Round: <span id="cr-round">1</span>/<?= count(
+                            $game_data["rounds"] ?? [],
+                        ) ?></div>
+                        <div class="text-lg font-bold">Time: <span id="cr-timer" style="color:#E9197B;"><?= $game_data[
+                            "time_limit"
+                        ] ?? 60 ?></span>s</div>
+                    </div>
+
+                    <div class="text-center mb-6">
+                        <p class="text-sm text-twitch-muted mb-2">Type this code as fast as you can:</p>
+                        <pre id="cr-target" class="text-left p-6 bg-twitch-dark rounded-lg border border-twitch-border font-mono text-sm overflow-x-auto" style="min-height:80px;">Loading...</pre>
+                    </div>
+
+                    <div class="mb-4">
+                        <textarea id="cr-input" class="w-full p-4 bg-twitch-medium border border-twitch-border rounded-lg text-twitch-text font-mono text-sm focus:outline-none focus:border-twitch-purple" rows="4" placeholder="Type the code exactly as shown..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" disabled></textarea>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button id="cr-start-btn" onclick="startCodeRace()" class="tw-btn tw-btn-primary tw-btn-lg">
+                            <i class="fas fa-flag-checkered"></i> Start Race
+                        </button>
+                        <div id="cr-result" class="text-sm font-bold"></div>
+                    </div>
+                </div>
+
+                <script>
+                const crRounds = <?= json_encode($game_data["rounds"] ?? []) ?>;
+                let crCurrentRound = 0;
+                let crScore = 0;
+                let crTimeLeft = <?= $game_data["time_limit"] ?? 60 ?>;
+                let crTimerInterval = null;
+                let crGameActive = false;
+
+                const crTargetEl = document.getElementById('cr-target');
+                const crInput = document.getElementById('cr-input');
+                const crScoreEl = document.getElementById('cr-score');
+                const crRoundEl = document.getElementById('cr-round');
+                const crTimerEl = document.getElementById('cr-timer');
+                const crResultEl = document.getElementById('cr-result');
+                const crStartBtn = document.getElementById('cr-start-btn');
+
+                crInput.addEventListener('input', function() {
+                    if (!crGameActive) return;
+                    const target = crRounds[crCurrentRound]?.code || '';
+                    const typed = this.value;
+
+                    if (typed === target) {
+                        // Round complete!
+                        const roundTime = <?= $game_data["time_limit"] ??
+                            60 ?> - crTimeLeft;
+                        const accuracy = Math.round((typed.length / target.length) * 100);
+                        const points = Math.round(100 * (1 - roundTime / <?= $game_data[
+                            "time_limit"
+                        ] ?? 60 ?>) * (accuracy / 100));
+                        crScore += Math.max(10, points);
+                        crScoreEl.textContent = crScore;
+                        crCurrentRound++;
+
+                        if (crCurrentRound >= crRounds.length) {
+                            endCodeRace();
+                        } else {
+                            crInput.value = '';
+                            crRoundEl.textContent = crCurrentRound + 1;
+                            crTargetEl.textContent = crRounds[crCurrentRound].code;
+                            crResultEl.textContent = '✅ Round complete! +' + Math.max(10, points);
+                            crResultEl.style.color = '#00D95A';
+                        }
+                    }
+
+                    // Highlight matching text
+                    const matchLen = getMatchLength(typed, target);
+                    if (matchLen < typed.length) {
+                        crInput.style.borderColor = '#E9197B';
+                    } else {
+                        crInput.style.borderColor = '#00D95A';
+                    }
+                });
+
+                function getMatchLength(a, b) {
+                    let i = 0;
+                    while (i < a.length && i < b.length && a[i] === b[i]) i++;
+                    return i;
+                }
+
+                function startCodeRace() {
+                    if (crRounds.length === 0) {
+                        crResultEl.textContent = 'No rounds available!';
+                        crResultEl.style.color = '#E9197B';
+                        return;
+                    }
+
+                    crScore = 0;
+                    crCurrentRound = 0;
+                    crTimeLeft = <?= $game_data["time_limit"] ?? 60 ?>;
+                    crGameActive = true;
+
+                    crStartBtn.disabled = true;
+                    crStartBtn.style.opacity = '0.5';
+                    crInput.disabled = false;
+                    crInput.value = '';
+                    crInput.focus();
+
+                    crTimerInterval = setInterval(() => {
+                        crTimeLeft--;
+                        crTimerEl.textContent = crTimeLeft;
+
+                        if (crTimeLeft <= 0) {
+                            endCodeRace();
+                        }
+
+                        if (crTimeLeft <= 10) {
+                            crTimerEl.style.color = '#E9197B';
+                            crTimerEl.style.animation = 'pulse-ring 1s infinite';
+                        }
+                    }, 1000);
+
+                    crTargetEl.textContent = crRounds[0].code || 'Write code here';
+                    crResultEl.textContent = 'Go!';
+                    crResultEl.style.color = '#00D95A';
+                }
+
+                function endCodeRace() {
+                    crGameActive = false;
+                    clearInterval(crTimerInterval);
+                    crInput.disabled = true;
+                    crStartBtn.disabled = false;
+                    crStartBtn.style.opacity = '1';
+                    crTimerEl.style.animation = '';
+                    crInput.style.borderColor = '';
+
+                    const timeTaken = <?= $game_data["time_limit"] ??
+                        60 ?> - crTimeLeft;
+
+                    if (crScore > 0) {
+                        crResultEl.textContent = '🏁 Race finished! Score: ' + crScore;
+                        crResultEl.style.color = '#FFD700';
+                    }
+
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.innerHTML = `
+                        <input type="hidden" name="submit_score" value="1">
+                        <input type="hidden" name="score" value="${crScore}">
+                        <input type="hidden" name="time_taken" value="${timeTaken}">
+                    `;
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+                </script>
+
             <?php else: ?>
                 <!-- Generic game fallback -->
                 <div style="text-align:center; padding:60px 20px;">

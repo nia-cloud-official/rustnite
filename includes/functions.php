@@ -767,6 +767,14 @@ function generate_ai_response($context, $language)
         "/\b(best practice|style|convention|idiomatic|proper)\b/",
         $lower_context,
     );
+    $is_mini_game = preg_match(
+        "/\b(create mini game|generate game|mini-game|make a game|new game|gamedev|game idea)\b/",
+        $lower_context,
+    );
+    $is_mini_game_create = preg_match(
+        "/\b(create|generate|make|new)\b.*\b(mini.game|game|challenge)\b/",
+        $lower_context,
+    );
 
     // Extract code from user message
     preg_match('/```(\w+)?\n(.*?)```/s', $context, $user_code);
@@ -852,6 +860,25 @@ function generate_ai_response($context, $language)
         $response .= "```\n\n";
         $response .=
             "Remember: Clean code is not just for computers - it's for humans too! 👨‍💻";
+    } elseif ($is_mini_game_create) {
+        $response = "🎮 **Mini-Game Creation!**\n\n";
+        $response .= "I can help you create coding mini-games! Here's how:\n\n";
+        $response .=
+            "To generate a new mini-game, go to the **Mini-Games Arena** and click the **AI Generate** button.\n\n";
+        $response .= "You can choose:\n";
+        $response .=
+            "- **Language**: Rust, Python, JavaScript, TypeScript, Go, Java, C++, or C\n";
+        $response .=
+            "- **Game Type**: Syntax Speed, Bug Hunt, or Output Prediction\n";
+        $response .=
+            "- **Difficulty**: Beginner, Intermediate, or Advanced\n\n";
+        $response .=
+            "The AI will create a brand new game with fresh questions and challenges! 🚀\n\n";
+        $response .= "```{$language}\n";
+        $response .= "// Here's a mini-game idea you can try\n";
+        $response .= "// Create a syntax speed challenge for: {$language}\n";
+        $response .= "// Generate it from the Mini-Games page!\n";
+        $response .= "```";
     } else {
         $response =
             "Thanks for your question! Let me help you understand this better:\n\n";
@@ -900,6 +927,8 @@ function generate_mini_game(
             return generate_bug_hunt_game($lang, $difficulty);
         case "output_prediction":
             return generate_output_prediction_game($lang, $difficulty);
+        case "code_race":
+            return generate_code_race_game($lang, $difficulty);
         default:
             return generate_syntax_speed_game($lang, $difficulty);
     }
@@ -1014,6 +1043,49 @@ function generate_output_prediction_game($lang, $difficulty)
         "language_id" => $lang["id"],
         "game_data" => json_encode([
             "questions" => $questions,
+        ]),
+        "xp_reward" => $xp,
+    ];
+}
+
+function generate_code_race_game($lang, $difficulty)
+{
+    $language = $lang["slug"];
+    $rounds = [];
+
+    $race_patterns = get_syntax_patterns($language, $difficulty);
+    shuffle($race_patterns);
+
+    $count = min(5, count($race_patterns));
+    for ($i = 0; $i < $count; $i++) {
+        $rounds[] = [
+            "code" => $race_patterns[$i]["answer"],
+            "hint" => $race_patterns[$i]["hint"] ?? "",
+        ];
+    }
+
+    $time_limit =
+        $difficulty === "beginner"
+            ? 90
+            : ($difficulty === "intermediate"
+                ? 60
+                : 40);
+    $xp =
+        $difficulty === "beginner"
+            ? 150
+            : ($difficulty === "intermediate"
+                ? 250
+                : 400);
+
+    return [
+        "title" => ucfirst($language) . " Code Race",
+        "description" => "Race to type {$language} code correctly! ({$difficulty})",
+        "type" => "code_race",
+        "difficulty" => $difficulty,
+        "language_id" => $lang["id"],
+        "game_data" => json_encode([
+            "time_limit" => $time_limit,
+            "rounds" => $rounds,
         ]),
         "xp_reward" => $xp,
     ];
