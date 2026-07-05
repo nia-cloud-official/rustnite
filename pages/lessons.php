@@ -40,6 +40,24 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $lessons = $stmt->fetchAll();
 
+// Auto-generate lessons if none exist (no search, no filter)
+if (empty($lessons) && empty($search_query) && $selected_lang > 0) {
+    ensure_lessons_exist($selected_lang, 5);
+    // Re-fetch
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $lessons = $stmt->fetchAll();
+} elseif (empty($lessons) && empty($search_query) && $selected_lang === 0) {
+    // No lessons for any language - seed them
+    foreach ($languages as $lang) {
+        ensure_lessons_exist($lang["id"], 3);
+    }
+    // Re-fetch
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $lessons = $stmt->fetchAll();
+}
+
 $completed_count = count(array_filter($lessons, fn($l) => $l["completed"]));
 $total_count = count($lessons);
 

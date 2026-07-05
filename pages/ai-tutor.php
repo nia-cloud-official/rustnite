@@ -1,31 +1,14 @@
 <?php
-$page_title = 'AI Tutor';
-$user = get_user_by_id($_SESSION['user_id']);
-$chats = get_ai_chats($_SESSION['user_id']);
-$current_chat_id = (int)($_GET['chat_id'] ?? 0);
+$page_title = "AI Tutor";
+$user = get_user_by_id($_SESSION["user_id"]);
+$chats = get_ai_chats($_SESSION["user_id"]);
+$current_chat_id = (int) ($_GET["chat_id"] ?? 0);
 $languages = get_languages();
 
 // Get messages for current chat
 $messages = [];
 if ($current_chat_id) {
-    $messages = get_ai_messages($current_chat_id, $_SESSION['user_id']);
-}
-
-// Create new chat
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_chat'])) {
-    $lang = $_POST['language'] ?? 'rust';
-    $chat_id = create_ai_chat($_SESSION['user_id'], $lang);
-    header("Location: index.php?page=ai-tutor&chat_id={$chat_id}");
-    exit;
-}
-
-// Delete chat
-if (isset($_GET['delete_chat'])) {
-    $delete_id = (int)$_GET['delete_chat'];
-    $stmt = $pdo->prepare("DELETE FROM ai_chats WHERE id = ? AND user_id = ?");
-    $stmt->execute([$delete_id, $_SESSION['user_id']]);
-    header("Location: index.php?page=ai-tutor");
-    exit;
+    $messages = get_ai_messages($current_chat_id, $_SESSION["user_id"]);
 }
 ?>
 <div style="display:flex; gap:20px; height: calc(100vh - 200px); min-height: 500px; animation: fade-in 0.5s ease-out;">
@@ -43,7 +26,9 @@ if (isset($_GET['delete_chat'])) {
             <form method="POST" class="space-y-2">
                 <select name="language" class="w-full p-2 bg-twitch-medium border border-twitch-border rounded-lg text-twitch-text text-sm">
                     <?php foreach ($languages as $lang): ?>
-                        <option value="<?= $lang['slug'] ?>"><?= $lang['name'] ?></option>
+                        <option value="<?= $lang["slug"] ?>"><?= $lang[
+    "name"
+] ?></option>
                     <?php endforeach; ?>
                 </select>
                 <button type="submit" name="new_chat" class="tw-btn tw-btn-primary tw-btn-sm tw-btn-block">
@@ -56,17 +41,31 @@ if (isset($_GET['delete_chat'])) {
         <div style="flex:1; overflow-y:auto; padding:0 12px 12px;">
             <?php if (!empty($chats)): ?>
                 <?php foreach ($chats as $chat): ?>
-                    <a href="index.php?page=ai-tutor&chat_id=<?= $chat['id'] ?>"
-                       class="tw-nav-item <?= $chat['id'] == $current_chat_id ? 'active' : '' ?>"
+                    <a href="index.php?page=ai-tutor&chat_id=<?= $chat["id"] ?>"
+                       class="tw-nav-item <?= $chat["id"] == $current_chat_id
+                           ? "active"
+                           : "" ?>"
                        style="margin-bottom:4px;">
                         <i class="fas fa-comment" style="font-size:12px;"></i>
                         <div style="flex:1; overflow:hidden;">
-                            <div style="font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($chat['title']) ?></div>
+                            <div style="font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars(
+                                $chat["title"],
+                            ) ?></div>
                             <div style="font-size:10px; color:#ADADB8;">
-                                <?= $chat['last_message'] ? substr(htmlspecialchars($chat['last_message']), 0, 40) . '...' : 'No messages' ?>
+                                <?= $chat["last_message"]
+                                    ? substr(
+                                            htmlspecialchars(
+                                                $chat["last_message"],
+                                            ),
+                                            0,
+                                            40,
+                                        ) . "..."
+                                    : "No messages" ?>
                             </div>
                         </div>
-                        <a href="?page=ai-tutor&delete_chat=<?= $chat['id'] ?>" onclick="return confirm('Delete this chat?')" style="color:#ADADB8; font-size:12px;">
+                        <a href="?page=ai-tutor&delete_chat=<?= $chat[
+                            "id"
+                        ] ?>" onclick="return confirm('Delete this chat?')" style="color:#ADADB8; font-size:12px;">
                             <i class="fas fa-times"></i>
                         </a>
                     </a>
@@ -91,16 +90,36 @@ if (isset($_GET['delete_chat'])) {
             <div id="chat-messages" style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:16px;">
                 <?php if (!empty($messages)): ?>
                     <?php foreach ($messages as $msg): ?>
-                        <div style="display:flex; gap:12px; <?= $msg['role'] === 'user' ? 'flex-direction:row-reverse;' : '' ?> animation: slide-up 0.3s ease-out;">
-                            <div class="tw-avatar" style="width:36px; height:36px; font-size:12px; <?= $msg['role'] === 'user' ? 'background:linear-gradient(135deg, #FF6B35, #E9197B);' : 'background:linear-gradient(135deg, #9147FF, #772CE8);' ?> flex-shrink:0;">
-                                <?= $msg['role'] === 'user' ? 'U' : 'AI' ?>
+                        <div style="display:flex; gap:12px; <?= $msg["role"] ===
+                        "user"
+                            ? "flex-direction:row-reverse;"
+                            : "" ?> animation: slide-up 0.3s ease-out;">
+                            <div class="tw-avatar" style="width:36px; height:36px; font-size:12px; <?= $msg[
+                                "role"
+                            ] === "user"
+                                ? "background:linear-gradient(135deg, #FF6B35, #E9197B);"
+                                : "background:linear-gradient(135deg, #9147FF, #772CE8);" ?> flex-shrink:0;">
+                                <?= $msg["role"] === "user" ? "U" : "AI" ?>
                             </div>
-                            <div style="max-width:80%; <?= $msg['role'] === 'user' ? 'text-align:right;' : '' ?>">
-                                <div class="tw-card" style="display:inline-block; padding:12px 16px; <?= $msg['role'] === 'user' ? 'background:#2D2D35;' : '' ?>">
-                                    <div style="font-size:13px; line-height:1.6; white-space:pre-wrap;"><?= htmlspecialchars($msg['content']) ?></div>
+                            <div style="max-width:80%; <?= $msg["role"] ===
+                            "user"
+                                ? "text-align:right;"
+                                : "" ?>">
+                                <div class="tw-card" style="display:inline-block; padding:12px 16px; <?= $msg[
+                                    "role"
+                                ] === "user"
+                                    ? "background:#2D2D35;"
+                                    : "" ?>">
+                                    <div style="font-size:13px; line-height:1.6; white-space:pre-wrap;"><?= htmlspecialchars(
+                                        $msg["content"],
+                                    ) ?></div>
                                 </div>
-                                <div style="font-size:10px; color:#ADADB8; margin-top:4px; <?= $msg['role'] === 'user' ? 'text-align:right;' : '' ?>">
-                                    <?= time_ago($msg['created_at']) ?>
+                                <div style="font-size:10px; color:#ADADB8; margin-top:4px; <?= $msg[
+                                    "role"
+                                ] === "user"
+                                    ? "text-align:right;"
+                                    : "" ?>">
+                                    <?= time_ago($msg["created_at"]) ?>
                                 </div>
                             </div>
                         </div>
@@ -180,7 +199,7 @@ if (isset($_GET['delete_chat'])) {
 </style>
 
 <script>
-let chatId = <?= $current_chat_id ?: 'null' ?>;
+let chatId = <?= $current_chat_id ?: "null" ?>;
 let isSending = false;
 
 function sendMessage(e) {

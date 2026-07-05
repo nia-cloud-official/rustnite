@@ -11,6 +11,11 @@ if (isset($_GET["generate"]) && $lesson_id === 0) {
         header("Location: index.php?page=lesson&id=" . $result["lesson_id"]);
         exit();
     }
+    // If generation failed, redirect back with message
+    $_SESSION["flash_message"] =
+        $result["error"] ?? "Failed to generate lesson";
+    header("Location: index.php?page=lessons&language=" . $lang_id);
+    exit();
 }
 
 $lesson = get_lesson_by_id($lesson_id);

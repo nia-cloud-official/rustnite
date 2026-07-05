@@ -159,6 +159,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             break;
 
         case "ai-tutor":
+            // New chat
+            if (isset($_POST["new_chat"]) && isset($_SESSION["user_id"])) {
+                $lang = $_POST["language"] ?? "rust";
+                $chat_id = create_ai_chat($_SESSION["user_id"], $lang);
+                header("Location: index.php?page=ai-tutor&chat_id={$chat_id}");
+                exit();
+            }
+            // Delete chat
+            if (isset($_GET["delete_chat"]) && isset($_SESSION["user_id"])) {
+                $delete_id = (int) $_GET["delete_chat"];
+                $stmt = $pdo->prepare(
+                    "DELETE FROM ai_chats WHERE id = ? AND user_id = ?",
+                );
+                $stmt->execute([$delete_id, $_SESSION["user_id"]]);
+                header("Location: index.php?page=ai-tutor");
+                exit();
+            }
+            // Send message
             if (isset($_POST["message"]) && isset($_SESSION["user_id"])) {
                 $message = $_POST["message"];
                 $language = $_POST["language"] ?? "rust";

@@ -2281,7 +2281,9 @@ function generate_ai_lesson(
 
 function get_lesson_topics($language, $difficulty)
 {
-    $topics = [
+    static $all_topics = null;
+    if ($all_topics === null) {
+        $all_topics = [
         "rust" => [
             "beginner" => [
                 "Variables & Mutability",
@@ -2588,7 +2590,12 @@ function get_lesson_topics($language, $difficulty)
         ],
     ];
 
-    return $topics[strtolower($language)] ?? $topics["rust"];
+    $lang_key = strtolower($language);
+    if (isset($all_topics[$lang_key][$difficulty])) {
+        return $all_topics[$lang_key][$difficulty];
+    }
+    // Fallback to Rust beginner topics
+    return $all_topics["rust"]["beginner"];
 }
 
 function build_lesson_content($lang, $difficulty, $topic)
