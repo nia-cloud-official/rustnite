@@ -877,6 +877,824 @@ function generate_ai_response($context, $language)
     return $response;
 }
 
+// ============== AI MINI-GAME GENERATION ==============
+
+function generate_mini_game(
+    $language_slug,
+    $type = "syntax_speed",
+    $difficulty = "beginner",
+) {
+    global $pdo;
+
+    // Get language info
+    $lang = get_language_by_slug($language_slug);
+    if (!$lang) {
+        return ["error" => "Language not found"];
+    }
+
+    // Build game content based on type using Big Pickle intelligence
+    switch ($type) {
+        case "syntax_speed":
+            return generate_syntax_speed_game($lang, $difficulty);
+        case "bug_hunt":
+            return generate_bug_hunt_game($lang, $difficulty);
+        case "output_prediction":
+            return generate_output_prediction_game($lang, $difficulty);
+        default:
+            return generate_syntax_speed_game($lang, $difficulty);
+    }
+}
+
+function generate_syntax_speed_game($lang, $difficulty)
+{
+    $language = $lang["slug"];
+    $questions = [];
+
+    // Common syntax patterns per language
+    $patterns = get_syntax_patterns($language, $difficulty);
+    shuffle($patterns);
+
+    $count = min(8, count($patterns));
+    for ($i = 0; $i < $count; $i++) {
+        $questions[] = $patterns[$i];
+    }
+
+    $time_limit =
+        $difficulty === "beginner"
+            ? 45
+            : ($difficulty === "intermediate"
+                ? 30
+                : 20);
+    $xp =
+        $difficulty === "beginner"
+            ? 100
+            : ($difficulty === "intermediate"
+                ? 200
+                : 300);
+
+    return [
+        "title" => ucfirst($language) . " Syntax Sprint",
+        "description" => "Type the correct {$language} syntax as fast as you can! ({$difficulty})",
+        "type" => "syntax_speed",
+        "difficulty" => $difficulty,
+        "language_id" => $lang["id"],
+        "game_data" => json_encode([
+            "time_limit" => $time_limit,
+            "questions" => $questions,
+        ]),
+        "xp_reward" => $xp,
+    ];
+}
+
+function generate_bug_hunt_game($lang, $difficulty)
+{
+    $language = $lang["slug"];
+    $bugs = [];
+
+    $bug_patterns = get_bug_patterns($language, $difficulty);
+    shuffle($bug_patterns);
+
+    $count = min(5, count($bug_patterns));
+    for ($i = 0; $i < $count; $i++) {
+        $bugs[] = $bug_patterns[$i];
+    }
+
+    $time_limit =
+        $difficulty === "beginner"
+            ? 180
+            : ($difficulty === "intermediate"
+                ? 120
+                : 60);
+    $xp =
+        $difficulty === "beginner"
+            ? 150
+            : ($difficulty === "intermediate"
+                ? 250
+                : 400);
+
+    return [
+        "title" => ucfirst($language) . " Bug Hunt",
+        "description" => "Find and fix bugs in {$language} code! ({$difficulty})",
+        "type" => "bug_hunt",
+        "difficulty" => $difficulty,
+        "language_id" => $lang["id"],
+        "game_data" => json_encode([
+            "time_limit" => $time_limit,
+            "bugs" => $bugs,
+        ]),
+        "xp_reward" => $xp,
+    ];
+}
+
+function generate_output_prediction_game($lang, $difficulty)
+{
+    $language = $lang["slug"];
+    $questions = [];
+
+    $prediction_patterns = get_prediction_patterns($language, $difficulty);
+    shuffle($prediction_patterns);
+
+    $count = min(6, count($prediction_patterns));
+    for ($i = 0; $i < $count; $i++) {
+        $questions[] = $prediction_patterns[$i];
+    }
+
+    $xp =
+        $difficulty === "beginner"
+            ? 120
+            : ($difficulty === "intermediate"
+                ? 200
+                : 350);
+
+    return [
+        "title" => ucfirst($language) . " Output Oracle",
+        "description" => "Predict what this {$language} code will output! ({$difficulty})",
+        "type" => "output_prediction",
+        "difficulty" => $difficulty,
+        "language_id" => $lang["id"],
+        "game_data" => json_encode([
+            "questions" => $questions,
+        ]),
+        "xp_reward" => $xp,
+    ];
+}
+
+function get_syntax_patterns($language, $difficulty)
+{
+    $patterns = [
+        "rust" => [
+            "beginner" => [
+                [
+                    "prompt" => "Print to console in Rust",
+                    "answer" => 'println!("Hello");',
+                    "hint" => "Use println! macro",
+                ],
+                [
+                    "prompt" => "Declare an immutable variable in Rust",
+                    "answer" => "let x = 5;",
+                    "hint" => "Use let keyword",
+                ],
+                [
+                    "prompt" => "Declare a mutable variable in Rust",
+                    "answer" => "let mut x = 5;",
+                    "hint" => "Add mut after let",
+                ],
+                [
+                    "prompt" => "Define a function in Rust",
+                    "answer" => "fn main() {}",
+                    "hint" => "Use fn keyword",
+                ],
+                [
+                    "prompt" => "Create a Vec in Rust",
+                    "answer" => "let v = vec![1, 2, 3];",
+                    "hint" => "Use vec! macro",
+                ],
+                [
+                    "prompt" => "If statement in Rust",
+                    "answer" => "if x > 0 {}",
+                    "hint" => "No parentheses needed",
+                ],
+                [
+                    "prompt" => "For loop in Rust",
+                    "answer" => "for i in 0..10 {}",
+                    "hint" => "Use for..in range",
+                ],
+                [
+                    "prompt" => "While loop in Rust",
+                    "answer" => "while true {}",
+                    "hint" => "Use while keyword",
+                ],
+                [
+                    "prompt" => "Return a value from function",
+                    "answer" => "fn add(a: i32, b: i32) -> i32 { a + b }",
+                    "hint" => "Last expression is return",
+                ],
+                [
+                    "prompt" => "Match statement in Rust",
+                    "answer" => "match x { 1 => true, _ => false }",
+                    "hint" => "Use match keyword",
+                ],
+            ],
+            "intermediate" => [
+                [
+                    "prompt" => "Define a struct in Rust",
+                    "answer" => "struct Point { x: i32, y: i32 }",
+                    "hint" => "Use struct keyword",
+                ],
+                [
+                    "prompt" => "Implement a trait in Rust",
+                    "answer" => "impl Display for Point {}",
+                    "hint" => "Use impl Trait for Type",
+                ],
+                [
+                    "prompt" => "Use match with enum",
+                    "answer" =>
+                        "match self { Option::Some(v) => v, None => 0 }",
+                    "hint" => "Match all variants",
+                ],
+                [
+                    "prompt" => "Read file in Rust",
+                    "answer" =>
+                        'let contents = fs::read_to_string("file.txt").unwrap();',
+                    "hint" => "Use fs module",
+                ],
+                [
+                    "prompt" => "Handle Result type",
+                    "answer" => 'let val = result.expect("error message");',
+                    "hint" => "Use expect or unwrap",
+                ],
+            ],
+            "advanced" => [
+                [
+                    "prompt" => "Define a generic function",
+                    "answer" => "fn identity<T>(x: T) -> T { x }",
+                    "hint" => "Use <T> syntax",
+                ],
+                [
+                    "prompt" => "Use Box for heap allocation",
+                    "answer" => "let b = Box::new(5);",
+                    "hint" => "Box::new()",
+                ],
+                [
+                    "prompt" => "Create a closure",
+                    "answer" => "let add = |a, b| a + b;",
+                    "hint" => "Use || syntax",
+                ],
+                [
+                    "prompt" => "Use Arc for thread safety",
+                    "answer" => "let arc = Arc::new(value);",
+                    "hint" => "Arc::new()",
+                ],
+                [
+                    "prompt" => "Define a macro in Rust",
+                    "answer" => "macro_rules! my_macro { () => {} }",
+                    "hint" => "Use macro_rules!",
+                ],
+            ],
+        ],
+        "python" => [
+            "beginner" => [
+                [
+                    "prompt" => "Print to console in Python",
+                    "answer" => 'print("Hello")',
+                    "hint" => "Use print() function",
+                ],
+                [
+                    "prompt" => "Declare a variable in Python",
+                    "answer" => "x = 5",
+                    "hint" => "No keyword needed",
+                ],
+                [
+                    "prompt" => "If statement in Python",
+                    "answer" => "if x > 0:",
+                    "hint" => "End with colon",
+                ],
+                [
+                    "prompt" => "For loop in Python",
+                    "answer" => "for i in range(10):",
+                    "hint" => "Use for..in range",
+                ],
+                [
+                    "prompt" => "Define a function in Python",
+                    "answer" => "def hello():",
+                    "hint" => "Use def keyword",
+                ],
+                [
+                    "prompt" => "Create a list in Python",
+                    "answer" => "my_list = [1, 2, 3]",
+                    "hint" => "Use square brackets",
+                ],
+                [
+                    "prompt" => "While loop in Python",
+                    "answer" => "while True:",
+                    "hint" => "End with colon",
+                ],
+                [
+                    "prompt" => "Return a value in Python",
+                    "answer" => "return value",
+                    "hint" => "Use return keyword",
+                ],
+            ],
+            "intermediate" => [
+                [
+                    "prompt" => "Create a class in Python",
+                    "answer" => "class MyClass:",
+                    "hint" => "Use class keyword",
+                ],
+                [
+                    "prompt" => "Try-except in Python",
+                    "answer" => "try: except Exception:",
+                    "hint" => "Use try/except",
+                ],
+                [
+                    "prompt" => "List comprehension in Python",
+                    "answer" => "[x*2 for x in range(10)]",
+                    "hint" => "Use [expr for var in iter]",
+                ],
+                [
+                    "prompt" => "Open a file in Python",
+                    "answer" => 'with open("file.txt") as f:',
+                    "hint" => "Use with statement",
+                ],
+                [
+                    "prompt" => "Import a module in Python",
+                    "answer" => "import math",
+                    "hint" => "Use import keyword",
+                ],
+            ],
+            "advanced" => [
+                [
+                    "prompt" => "Create a decorator in Python",
+                    "answer" => "def decorator(func): def wrapper(): pass",
+                    "hint" => "Nested function",
+                ],
+                [
+                    "prompt" => "Generator expression in Python",
+                    "answer" => "(x*2 for x in range(10))",
+                    "hint" => "Use () instead of []",
+                ],
+                [
+                    "prompt" => "Lambda function in Python",
+                    "answer" => "lambda x: x * 2",
+                    "hint" => "Use lambda keyword",
+                ],
+                [
+                    "prompt" => "Async function in Python",
+                    "answer" => "async def fetch_data():",
+                    "hint" => "Use async def",
+                ],
+                [
+                    "prompt" => "Type hint in Python",
+                    "answer" => "def add(x: int, y: int) -> int:",
+                    "hint" => "Add : type after parameter",
+                ],
+            ],
+        ],
+        "javascript" => [
+            "beginner" => [
+                [
+                    "prompt" => "Print to console in JS",
+                    "answer" => 'console.log("Hello");',
+                    "hint" => "Use console.log()",
+                ],
+                [
+                    "prompt" => "Declare a variable in JS",
+                    "answer" => "let x = 5;",
+                    "hint" => "Use let or const",
+                ],
+                [
+                    "prompt" => "If statement in JS",
+                    "answer" => "if (x > 0) {}",
+                    "hint" => "Parentheses required",
+                ],
+                [
+                    "prompt" => "For loop in JS",
+                    "answer" => "for (let i = 0; i < 10; i++) {}",
+                    "hint" => "C-style for loop",
+                ],
+                [
+                    "prompt" => "Define a function in JS",
+                    "answer" => "function hello() {}",
+                    "hint" => "Use function keyword",
+                ],
+                [
+                    "prompt" => "Create an array in JS",
+                    "answer" => "const arr = [1, 2, 3];",
+                    "hint" => "Use square brackets",
+                ],
+                [
+                    "prompt" => "Arrow function in JS",
+                    "answer" => "const add = (a, b) => a + b;",
+                    "hint" => "Use => syntax",
+                ],
+                [
+                    "prompt" => "While loop in JS",
+                    "answer" => "while (true) {}",
+                    "hint" => "Use while keyword",
+                ],
+            ],
+            "intermediate" => [
+                [
+                    "prompt" => "Create an object in JS",
+                    "answer" => 'const obj = { key: "value" };',
+                    "hint" => "Use curly braces",
+                ],
+                [
+                    "prompt" => "Promise in JS",
+                    "answer" => "new Promise((resolve, reject) => {})",
+                    "hint" => "Pass executor function",
+                ],
+                [
+                    "prompt" => "Array map in JS",
+                    "answer" => "arr.map(x => x * 2)",
+                    "hint" => "Use .map()",
+                ],
+                [
+                    "prompt" => "Template literal in JS",
+                    "answer" => '`Hello ${name}`',
+                    "hint" => 'Use backticks and ${}',
+                ],
+                [
+                    "prompt" => "Destructuring in JS",
+                    "answer" => "const { name, age } = obj;",
+                    "hint" => "Use {} destructuring",
+                ],
+            ],
+            "advanced" => [
+                [
+                    "prompt" => "Async/await in JS",
+                    "answer" => "async function fetchData() { await response }",
+                    "hint" => "Use async/await",
+                ],
+                [
+                    "prompt" => "Class in JS",
+                    "answer" => "class MyClass extends BaseClass {}",
+                    "hint" => "Use class/extends",
+                ],
+                [
+                    "prompt" => "Spread operator in JS",
+                    "answer" => "const merged = { ...obj1, ...obj2 };",
+                    "hint" => "Use ... spread",
+                ],
+                [
+                    "prompt" => "Reduce array in JS",
+                    "answer" => "arr.reduce((acc, val) => acc + val, 0)",
+                    "hint" => "Use .reduce()",
+                ],
+            ],
+        ],
+    ];
+
+    // Default to rust if language not found
+    $lang_patterns = $patterns[$language] ?? $patterns["rust"];
+    return $lang_patterns[$difficulty] ?? $lang_patterns["beginner"];
+}
+
+function get_bug_patterns($language, $difficulty)
+{
+    $bugs = [
+        "rust" => [
+            "beginner" => [
+                [
+                    "code" => 'prntln!("Hello");',
+                    "fix" => 'println!("Hello");',
+                    "hint" => "Missing l in println",
+                ],
+                [
+                    "code" => 'let x = 5\nx = 6',
+                    "fix" => 'let mut x = 5;\nx = 6;',
+                    "hint" => "Variable must be mutable",
+                ],
+                [
+                    "code" => 'fn main() {\n    return 0;\n}',
+                    "fix" => 'fn main() {\n    // return 0;\n}',
+                    "hint" => 'main() doesn\'t return a value',
+                ],
+                [
+                    "code" => 'if x > 0 {\n    true\n}',
+                    "fix" => 'if x > 0 {\n    // true\n}',
+                    "hint" => "Missing parentheses (add them or remove)",
+                ],
+                [
+                    "code" => 'let name: str = "hello";',
+                    "fix" => 'let name: &str = "hello";',
+                    "hint" => "String literals are &str",
+                ],
+            ],
+            "intermediate" => [
+                [
+                    "code" => 'fn get_value() -> i32 {\n    return "hello";\n}',
+                    "fix" => 'fn get_value() -> &str {\n    return "hello";\n}',
+                    "hint" => "Return type mismatch",
+                ],
+                [
+                    "code" => 'let v = vec![1, 2, 3];\nlet x = v[10];',
+                    "fix" =>
+                        'let v = vec![1, 2, 3];\nlet x = v.get(10).unwrap_or(&0);',
+                    "hint" => "Index out of bounds - use .get()",
+                ],
+                [
+                    "code" => 'let s = String::from("hello");\nlet c = s[0];',
+                    "fix" =>
+                        'let s = String::from("hello");\nlet c = s.chars().next().unwrap();',
+                    "hint" => "Cannot index String directly",
+                ],
+            ],
+            "advanced" => [
+                [
+                    "code" =>
+                        'fn main() {\n    let r;\n    { let x = 5; r = &x; }\n    println!("{}", r);\n}',
+                    "fix" =>
+                        'fn main() {\n    let x = 5;\n    let r = &x;\n    println!("{}", r);\n}',
+                    "hint" => "Dangling reference - x dropped too early",
+                ],
+                [
+                    "code" =>
+                        'use std::rc::Rc;\nlet x = Rc::new(5);\n*std::thread::spawn(move || { *x })',
+                    "fix" =>
+                        'use std::sync::Arc;\nlet x = Arc::new(5);\nstd::thread::spawn(move || { *x })',
+                    "hint" => "Rc is not thread-safe, use Arc",
+                ],
+            ],
+        ],
+        "python" => [
+            "beginner" => [
+                [
+                    "code" => 'prnt("Hello")',
+                    "fix" => 'print("Hello")',
+                    "hint" => "Missing i in print",
+                ],
+                [
+                    "code" => "if x = 5:",
+                    "fix" => "if x == 5:",
+                    "hint" => "Use == for comparison, not =",
+                ],
+                [
+                    "code" => 'def hello():\nprint("hi")',
+                    "fix" => 'def hello():\n    print("hi")',
+                    "hint" => "Indent the body with 4 spaces",
+                ],
+                [
+                    "code" => "for i in 10:",
+                    "fix" => "for i in range(10):",
+                    "hint" => "Use range() to iterate numbers",
+                ],
+            ],
+            "intermediate" => [
+                [
+                    "code" => 'x = 10\nif x > 5 and < 20:',
+                    "fix" => 'x = 10\nif x > 5 and x < 20:',
+                    "hint" => "Must repeat variable after and",
+                ],
+                [
+                    "code" =>
+                        'def add(a, b):\n    return a + b\n\nadd(5, "10")',
+                    "fix" => 'def add(a, b):\n    return a + b\n\nadd(5, 10)',
+                    "hint" => "Cannot add int and str",
+                ],
+            ],
+        ],
+        "javascript" => [
+            "beginner" => [
+                [
+                    "code" => 'console.log("Hello";',
+                    "fix" => 'console.log("Hello");',
+                    "hint" => "Missing closing parenthesis",
+                ],
+                [
+                    "code" => "if x > 0 { }",
+                    "fix" => "if (x > 0) { }",
+                    "hint" => "Parentheses required around condition",
+                ],
+                [
+                    "code" => 'const x = 5\nx = 6',
+                    "fix" => 'let x = 5;\nx = 6;',
+                    "hint" => "Cannot reassign const, use let",
+                ],
+                [
+                    "code" =>
+                        'function hello() {\n    return;\nconsole.log("never runs");\n}',
+                    "fix" =>
+                        'function hello() {\n    console.log("runs");\n    return;\n}',
+                    "hint" => "Code after return unreachable",
+                ],
+            ],
+            "intermediate" => [
+                [
+                    "code" => "[1, 2, 3].map(x => { return x * 2 })",
+                    "fix" => "[1, 2, 3].map(x => x * 2)",
+                    "hint" => 'Single expression arrow doesn\'t need braces',
+                ],
+                [
+                    "code" => 'const obj = {\n    name: "test"\n    age: 25\n}',
+                    "fix" => 'const obj = {\n    name: "test",\n    age: 25\n}',
+                    "hint" => "Missing comma between properties",
+                ],
+            ],
+        ],
+    ];
+
+    $lang_bugs = $bugs[$language] ?? $bugs["rust"];
+    return $lang_bugs[$difficulty] ?? $lang_bugs["beginner"];
+}
+
+function get_prediction_patterns($language, $difficulty)
+{
+    $predictions = [
+        "rust" => [
+            "beginner" => [
+                [
+                    "code" => 'println!("{}", 2 + 3);',
+                    "options" => ["5", "23", "Error", "None"],
+                    "correct" => 0,
+                ],
+                [
+                    "code" => 'let x = 5;\nlet y = x + 2;\nprintln!("{}", y);',
+                    "options" => ["5", "7", "2", "Error"],
+                    "correct" => 1,
+                ],
+                [
+                    "code" => 'let mut x = 10;\nx += 5;\nprintln!("{}", x);',
+                    "options" => ["10", "15", "5", "Error"],
+                    "correct" => 1,
+                ],
+                [
+                    "code" =>
+                        'let v = vec![1, 2, 3];\nprintln!("{}", v.len());',
+                    "options" => ["1", "2", "3", "4"],
+                    "correct" => 2,
+                ],
+                [
+                    "code" =>
+                        'let s = String::from("hello");\nprintln!("{}", s.len());',
+                    "options" => ["3", "4", "5", "6"],
+                    "correct" => 2,
+                ],
+            ],
+            "intermediate" => [
+                [
+                    "code" =>
+                        'fn add(x: i32, y: i32) -> i32 { x + y }\nprintln!("{}", add(3, 4));',
+                    "options" => ["3", "4", "7", "Error"],
+                    "correct" => 2,
+                ],
+                [
+                    "code" =>
+                        'let x = Some(5);\nif let Some(v) = x {\n    println!("{}", v);\n}',
+                    "options" => ["None", "5", "Some(5)", "Error"],
+                    "correct" => 1,
+                ],
+                [
+                    "code" =>
+                        'let nums = vec![1, 2, 3, 4, 5];\nlet sum: i32 = nums.iter().sum();\nprintln!("{}", sum);',
+                    "options" => ["10", "12", "14", "15"],
+                    "correct" => 3,
+                ],
+            ],
+            "advanced" => [
+                [
+                    "code" =>
+                        'let nums = vec![1, 2, 3];\nlet doubled: Vec<i32> = nums.iter().map(|x| x * 2).collect();\nprintln!("{:?}", doubled);',
+                    "options" => [
+                        "[1, 2, 3]",
+                        "[2, 4, 6]",
+                        "[0, 1, 2]",
+                        "Error",
+                    ],
+                    "correct" => 1,
+                ],
+                [
+                    "code" =>
+                        'let x: Result<i32, &str> = Ok(42);\nlet y = x.unwrap_or(0);\nprintln!("{}", y);',
+                    "options" => ["0", "42", "Error", "Ok(42)"],
+                    "correct" => 1,
+                ],
+            ],
+        ],
+        "python" => [
+            "beginner" => [
+                [
+                    "code" => "print(2 + 3)",
+                    "options" => ["5", "23", "Error", "None"],
+                    "correct" => 0,
+                ],
+                [
+                    "code" => 'x = 10\nprint(x * 2)',
+                    "options" => ["10", "12", "20", "Error"],
+                    "correct" => 2,
+                ],
+                [
+                    "code" => "print(type(42))",
+                    "options" => ['<class \'int\'>', "int", "number", "Error"],
+                    "correct" => 0,
+                ],
+            ],
+            "intermediate" => [
+                [
+                    "code" => 'def add(a, b): return a + b\nprint(add(3, 4))',
+                    "options" => ["3", "4", "7", "Error"],
+                    "correct" => 2,
+                ],
+                [
+                    "code" => 'nums = [1, 2, 3]\nprint(len(nums))',
+                    "options" => ["1", "2", "3", "4"],
+                    "correct" => 2,
+                ],
+            ],
+        ],
+        "javascript" => [
+            "beginner" => [
+                [
+                    "code" => "console.log(typeof 42)",
+                    "options" => ["number", "string", "object", "undefined"],
+                    "correct" => 0,
+                ],
+                [
+                    "code" => 'let x = 10;\nconsole.log(x + 5);',
+                    "options" => ["10", "15", "5", "Error"],
+                    "correct" => 1,
+                ],
+                [
+                    "code" => "console.log([1, 2, 3].length);",
+                    "options" => ["1", "2", "3", "4"],
+                    "correct" => 2,
+                ],
+            ],
+            "intermediate" => [
+                [
+                    "code" =>
+                        'const add = (a, b) => a + b;\nconsole.log(add(3, 4));',
+                    "options" => ["3", "4", "7", "Error"],
+                    "correct" => 2,
+                ],
+                [
+                    "code" =>
+                        'const arr = [1, 2, 3];\nconsole.log(arr.map(x => x * 2));',
+                    "options" => [
+                        "[1, 2, 3]",
+                        "[2, 4, 6]",
+                        "[0, 2, 4]",
+                        "Error",
+                    ],
+                    "correct" => 1,
+                ],
+            ],
+        ],
+    ];
+
+    $lang_preds = $predictions[$language] ?? $predictions["rust"];
+    return $lang_preds[$difficulty] ?? $lang_preds["beginner"];
+}
+
+function create_ai_generated_mini_game(
+    $user_id,
+    $language_slug,
+    $type = "syntax_speed",
+    $difficulty = "beginner",
+) {
+    global $pdo;
+
+    $result = generate_mini_game($language_slug, $type, $difficulty);
+
+    if (isset($result["error"])) {
+        return $result;
+    }
+
+    // Check if a similar AI-generated game already exists
+    $stmt = $pdo->prepare(
+        "SELECT id FROM mini_games WHERE title = ? AND language_id = ? AND type = ? AND difficulty = ?",
+    );
+    $stmt->execute([
+        $result["title"],
+        $result["language_id"],
+        $result["type"],
+        $result["difficulty"],
+    ]);
+    $existing = $stmt->fetch();
+
+    if ($existing) {
+        // Update existing game data
+        $stmt = $pdo->prepare(
+            "UPDATE mini_games SET game_data = ? WHERE id = ?",
+        );
+        $stmt->execute([$result["game_data"], $existing["id"]]);
+        return [
+            "action" => "updated",
+            "game_id" => $existing["id"],
+            "title" => $result["title"],
+        ];
+    }
+
+    // Insert new game
+    $stmt = $pdo->prepare(
+        "INSERT INTO mini_games (title, description, type, difficulty, language_id, game_data, xp_reward, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)",
+    );
+    $stmt->execute([
+        $result["title"],
+        $result["description"],
+        $result["type"],
+        $result["difficulty"],
+        $result["language_id"],
+        $result["game_data"],
+        $result["xp_reward"],
+    ]);
+
+    $game_id = $pdo->lastInsertId();
+
+    create_notification(
+        $user_id,
+        "mini_game",
+        "New AI-Generated Game!",
+        "A new {$difficulty} {$result["type"]} game for {$language_slug} has been created: {$result["title"]}!",
+    );
+
+    return [
+        "action" => "created",
+        "game_id" => $game_id,
+        "title" => $result["title"],
+    ];
+}
+
 function get_language_fact($language)
 {
     $facts = [
