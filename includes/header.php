@@ -891,7 +891,7 @@
         <div class="tw-logo">R</div>
         <div>
             <div style="font-size: 16px; font-weight: 800; color: #EFEFF1;">Rustnite</div>
-            <div style="font-size: 11px; color: #9147FF; font-weight: 600;">LIVE · v<?= APP_VERSION ?></div>
+            <div style="font-size: 11px; color: #9147FF; font-weight: 600;">Battle Royale Arena</div>
         </div>
     </div>
 
@@ -1051,7 +1051,8 @@
                 </div>
 
                 <div class="tw-user-menu" onclick="window.location='index.php?page=profile'">
-                    <div class="tw-avatar <?= $current_user["is_online"]
+                    <div class="tw-avatar <?= $current_user["is_online"] ??
+                    false
                         ? "online"
                         : "" ?>">
                         <?= get_avatar_letter($current_user["username"]) ?>
@@ -1107,7 +1108,7 @@
                 <div class="flex items-center gap-3">
                     <span class="text-xs text-twitch-muted">
                         <i class="fas fa-fire mr-1" style="color: #FF6B35;"></i>
-                        <?= $current_user["current_streak"] ?> day streak
+                        <?= $current_user["current_streak"] ?? 0 ?> day streak
                     </span>
                     <span class="text-xs text-twitch-muted">
                         <?= number_format(
