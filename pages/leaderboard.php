@@ -135,11 +135,7 @@ if (!$user_rank) {
                                     </td>
                                     <td style="padding:12px 16px;">
                                         <div class="flex items-center gap-3">
-                                            <div class="tw-avatar" style="width:36px; height:36px; font-size:12px; background:linear-gradient(135deg, #9147FF, #772CE8);">
-                                                <?= get_avatar_letter(
-                                                    $player["username"],
-                                                ) ?>
-                                            </div>
+                                            <?= get_avatar_html($player, 36) ?>
                                             <div>
                                                 <div class="font-medium text-sm <?= $is_current
                                                     ? "text-twitch-purple"

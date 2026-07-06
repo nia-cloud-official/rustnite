@@ -2247,6 +2247,37 @@ function get_avatar_letter($username)
     return strtoupper(substr($username, 0, 2));
 }
 
+function get_avatar_html($user, $size = 32, $extra_class = "")
+{
+    if (!empty($user["avatar_url"])) {
+        $size_attr =
+            $size === 32 ? "" : " width=\"{$size}\" height=\"{$size}\"";
+        return '<img src="' .
+            htmlspecialchars($user["avatar_url"]) .
+            '" alt="Avatar" class="tw-avatar-img' .
+            ($extra_class ? " " . $extra_class : "") .
+            '" style="width:' .
+            $size .
+            "px; height:" .
+            $size .
+            'px; border-radius:8px; object-fit:cover;"' .
+            $size_attr .
+            ">";
+    }
+    $letter = get_avatar_letter($user["username"] ?? "");
+    return '<div class="tw-avatar' .
+        ($extra_class ? " " . $extra_class : "") .
+        '" style="width:' .
+        $size .
+        "px; height:" .
+        $size .
+        "px; font-size:" .
+        max(10, $size / 2.5) .
+        'px;">' .
+        $letter .
+        "</div>";
+}
+
 function get_rank_badge($rank)
 {
     if ($rank == 1) {

@@ -48,9 +48,7 @@ $user_rank = $stmt->fetch()["user_rank"];
         <!-- Welcome Card -->
         <div class="tw-card tw-card-body lg:col-span-2" style="background: linear-gradient(135deg, rgba(145,71,255,0.1), rgba(233,25,123,0.05)); border-color: rgba(145,71,255,0.2);">
             <div class="flex items-center gap-4">
-                <div class="tw-avatar online" style="width:56px; height:56px; font-size:24px;"><?= get_avatar_letter(
-                    $user["username"],
-                ) ?></div>
+                <?= get_avatar_html($user, 56, "online") ?>
                 <div>
                     <h1 class="text-2xl font-bold">Welcome back, <?= htmlspecialchars(
                         $user["username"],

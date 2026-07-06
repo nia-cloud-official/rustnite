@@ -409,6 +409,10 @@
             box-shadow: 0 0 0 2px #00D95A;
         }
 
+        .tw-avatar-img.online {
+            box-shadow: 0 0 0 2px #00D95A;
+        }
+
         .tw-user-info {
             display: none;
         }
@@ -1050,12 +1054,9 @@
                 </div>
 
                 <div class="tw-user-menu" onclick="window.location='index.php?page=profile'">
-                    <div class="tw-avatar <?= !empty($current_user["is_online"])
-                        ? "online"
-                        : "" ?>">
-                        <?= get_avatar_letter($current_user["username"]) ?>
-                    </div>
-                    <div class="tw-user-info">
+                    >
+                                        <?= get_avatar_html($current_user, 32, !empty($current_user["is_online"]) ? "online" : "") ?>
+                                        <div class="tw-user-info">
                         <div class="name"><?= htmlspecialchars(
                             $current_user["username"],
                         ) ?></div>

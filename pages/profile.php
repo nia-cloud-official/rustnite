@@ -83,9 +83,7 @@ foreach ($languages as $lang) {
     <div class="tw-card mb-6" style="background: linear-gradient(135deg, rgba(145,71,255,0.1), rgba(233,25,123,0.05));">
         <div class="tw-card-body">
             <div class="flex items-center gap-6 flex-wrap">
-                <div class="tw-avatar online" style="width:80px; height:80px; font-size:32px; border-radius:16px;">
-                    <?= get_avatar_letter($user["username"]) ?>
-                </div>
+                <?= get_avatar_html($user, 80, "online") ?>
                 <div style="flex:1;">
                     <h1 class="text-2xl font-bold"><?= htmlspecialchars(
                         $user["username"],

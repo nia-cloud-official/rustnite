@@ -322,7 +322,7 @@ $key
                             <?php if ($view_post_id > 0): ?>
                                 <?php
                                 $stmt = $pdo->prepare(
-                                    "SELECT fc.*, u.username FROM feed_comments fc JOIN users u ON fc.user_id = u.id WHERE fc.post_id = ? ORDER BY fc.created_at ASC",
+                                    "SELECT fc.*, u.username, u.avatar_url FROM feed_comments fc JOIN users u ON fc.user_id = u.id WHERE fc.post_id = ? ORDER BY fc.created_at ASC",
                                 );
                                 $stmt->execute([$post["id"]]);
                                 $comments_list = $stmt->fetchAll();
@@ -338,9 +338,10 @@ $key
                                             as $comment
                                         ): ?>
                                             <div class="flex items-start gap-3 mb-3">
-                                                <div class="tw-avatar" style="width:28px; height:28px; font-size:10px;"><?= get_avatar_letter(
-                                                    $comment["username"],
-                                                ) ?></div>
+                                                <?= get_avatar_html(
+                                                    $comment,
+                                                    28,
+                                                ) ?>
                                                 <div style="flex:1;">
                                                     <div class="flex items-center gap-2 mb-1">
                                                         <span class="font-medium text-xs"><?= htmlspecialchars(
