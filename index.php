@@ -54,12 +54,14 @@ if ($page === "logout") {
 // GitHub OAuth callback — must be BEFORE the POST check (GitHub redirects via GET)
 if (isset($_GET["github_callback"]) && isset($_GET["code"])) {
     $code = $_GET["code"];
-    if (
-        !empty($code) &&
-        defined("GITHUB_CLIENT_ID") &&
-        !empty(GITHUB_CLIENT_ID)
-    ) {
-        try {
+    try {
+        if (
+            empty($code) ||
+            !defined("GITHUB_CLIENT_ID") ||
+            empty(GITHUB_CLIENT_ID)
+        ) {
+            $_SESSION["github_error"] = "GitHub OAuth is not configured.";
+        } else {
             $ch = curl_init("https://github.com/login/oauth/access_token");
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt(
@@ -78,7 +80,10 @@ if (isset($_GET["github_callback"]) && isset($_GET["code"])) {
             curl_close($ch);
             $access_token = $token_data["access_token"] ?? "";
 
-            if (!empty($access_token)) {
+            if (empty($access_token)) {
+                $_SESSION["github_error"] =
+                    "Could not get access token from GitHub.";
+            } else {
                 $ch = curl_init("https://api.github.com/user");
                 curl_setopt($ch, CURLOPT_HTTPHEADER, [
                     "Authorization: Bearer $access_token",
@@ -89,7 +94,9 @@ if (isset($_GET["github_callback"]) && isset($_GET["code"])) {
                 $github_user = json_decode(curl_exec($ch), true);
                 curl_close($ch);
 
-                if (!empty($github_user["id"])) {
+                if (empty($github_user["id"])) {
+                    $_SESSION["github_error"] = "GitHub returned no user data.";
+                } else {
                     $github_id = $github_user["id"];
                     $github_email = $github_user["email"] ?? "";
                     $github_login = $github_user["login"] ?? "";
@@ -146,13 +153,15 @@ if (isset($_GET["github_callback"]) && isset($_GET["code"])) {
                         $_SESSION["username"] = $username;
                     }
 
+                    session_regenerate_id(true);
                     session_write_close();
                     header("Location: index.php?page=dashboard");
                     exit();
                 }
             }
-        } catch (Exception $e) {
         }
+    } catch (Exception $e) {
+        $_SESSION["github_error"] = "GitHub login error: " . $e->getMessage();
     }
 }
 

@@ -26,13 +26,18 @@ if (
                     <p class="text-sm text-twitch-muted mt-1">Sign in to continue your coding journey</p>
                 </div>
 
-                <?php if ($error): ?>
+                <?php
+                $github_error = $_SESSION["github_error"] ?? "";
+                unset($_SESSION["github_error"]);
+                $display_error = $error ?: $github_error;
+                if ($display_error): ?>
                     <div style="background:rgba(233,25,123,0.1); border:1px solid rgba(233,25,123,0.2); border-radius:8px; padding:12px; margin-bottom:20px;">
                         <span style="color:#E9197B; font-size:13px;"><i class="fas fa-exclamation-circle mr-2"></i><?= htmlspecialchars(
-                            $error,
+                            $display_error,
                         ) ?></span>
                     </div>
-                <?php endif; ?>
+                <?php endif;
+                ?>
 
                 <form method="POST">
                     <div class="space-y-4">
