@@ -1052,14 +1052,11 @@
                 </div>
 
                 <div class="tw-user-menu" onclick="window.location='index.php?page=profile'">
-                    >
-                                        <?= get_avatar_html(
-                                            $current_user,
-                                            32,
-                                            !empty($current_user["is_online"])
-                                                ? "online"
-                                                : "",
-                                        ) ?>
+                    <?= get_avatar_html(
+                        $current_user,
+                        32,
+                        !empty($current_user["is_online"]) ? "online" : "",
+                    ) ?>
                                         <div class="tw-user-info">
                         <div class="name"><?= htmlspecialchars(
                             $current_user["username"],
