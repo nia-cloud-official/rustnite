@@ -68,8 +68,7 @@ function update_user_activity($user_id)
             UPDATE users SET
             last_activity_date = ?,
             current_streak = ?,
-            longest_streak = ?,
-            is_online = TRUE
+            longest_streak = ?
             WHERE id = ?
         ");
         $stmt->execute([$today, $new_streak, $longest, $user_id]);
