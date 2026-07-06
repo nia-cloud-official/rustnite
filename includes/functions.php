@@ -819,8 +819,9 @@ function call_opencode_api($context, $language)
     $payload = json_encode([
         "model" => AI_TUTOR_MODEL,
         "messages" => $messages,
-        "max_tokens" => AI_TUTOR_MAX_TOKENS,
+        "max_tokens" => 2048,
         "temperature" => AI_TUTOR_TEMPERATURE,
+        "stream" => false,
     ]);
 
     $ch = curl_init(OPENCODE_API_URL);
@@ -2703,6 +2704,150 @@ function build_lesson_content($lang, $difficulty, $topic)
         ],
     );
 
+    // Safety check: ensure starter_code is appropriate for the language.
+    // If it's empty or contains Rust code (fn main) for a non-Rust language, override it.
+    $non_rust_langs = [
+        "python",
+        "javascript",
+        "typescript",
+        "go",
+        "java",
+        "cpp",
+        "c",
+    ];
+    if (in_array($language, $non_rust_langs)) {
+        $has_rust_code = false;
+        $code_to_check = $exercise["starter_code"] ?? "";
+        if (
+            empty(trim($code_to_check)) ||
+            strpos($code_to_check, "fn main") !== false
+        ) {
+            $has_rust_code = true;
+        }
+        if ($has_rust_code) {
+            $starter_overrides = [
+                "python" =>
+                    "# Your " .
+                    $topic .
+                    ' implementation
+def main():
+    result = compute()
+    print(f"Result: {result}")
+
+def compute():
+    # TODO: Implement ' .
+                    $topic .
+                    '
+    return "implement me"
+
+if __name__ == "__main__":
+    main()',
+                "javascript" =>
+                    "// Your " .
+                    $topic .
+                    ' implementation
+function main() {
+    const result = compute();
+    console.log(`Result: ${result}`);
+}
+
+function compute() {
+    // TODO: Implement ' .
+                    $topic .
+                    '
+    return "implement me";
+}
+
+main();',
+                "typescript" =>
+                    "// Your " .
+                    $topic .
+                    ' implementation
+function main(): void {
+    const result: string = compute();
+    console.log(`Result: ${result}`);
+}
+
+function compute(): string {
+    // TODO: Implement ' .
+                    $topic .
+                    '
+    return "implement me";
+}
+
+main();',
+                "go" =>
+                    'package main
+
+import "fmt"
+
+func compute() string {
+    // TODO: Implement ' .
+                    $topic .
+                    '
+    return "implement me"
+}
+
+func main() {
+    result := compute()
+    fmt.Printf("Result: %s\n", result)
+}',
+                "java" =>
+                    'public class Main {
+    public static String compute() {
+        // TODO: Implement ' .
+                    $topic .
+                    '
+        return "implement me";
+    }
+
+    public static void main(String[] args) {
+        String result = compute();
+        System.out.println("Result: " + result);
+    }
+}',
+                "cpp" =>
+                    '#include <iostream>
+#include <string>
+using namespace std;
+
+string compute() {
+    // TODO: Implement ' .
+                    $topic .
+                    '
+    return "implement me";
+}
+
+int main() {
+    string result = compute();
+    cout << "Result: " << result << endl;
+    return 0;
+}',
+                "c" =>
+                    '#include <stdio.h>
+#include <string.h>
+
+const char* compute() {
+    // TODO: Implement ' .
+                    $topic .
+                    '
+    return "implement me";
+}
+
+int main() {
+    const char* result = compute();
+    printf("Result: %s\n", result);
+    return 0;
+}',
+            ];
+            if (isset($starter_overrides[$language])) {
+                $exercise["starter_code"] = $starter_overrides[$language];
+                // Also update code_template to match
+                $code_examples["template"] = $starter_overrides[$language];
+            }
+        }
+    }
+
     return [
         "title" => $title,
         "description" => $description,
@@ -3128,6 +3273,314 @@ print(f"x={x}, y={y}")',
     $lang = strtolower($language);
     if (isset($examples[$lang][$topic])) {
         return $examples[$lang][$topic];
+    }
+
+    // Generic topic-aware fallback for any language/topic not explicitly defined
+    $language_templates = [
+        "rust" => [
+            "example" =>
+                'fn main() {
+    // Example for ' .
+                $topic .
+                '
+    let result = compute();
+    println!("Result: {}", result);
+}
+
+fn compute() -> &\'' .
+                'static str {
+    "' .
+                $topic .
+                ' implementation"
+}',
+            "explanation" =>
+                "This example demonstrates " . $topic . " in Rust.",
+            "template" =>
+                'fn main() {
+    // Your ' .
+                $topic .
+                ' implementation here
+    let result = compute();
+    println!("Result: {}", result);
+}
+
+fn compute() -> &\'' .
+                'static str {
+    // TODO: Implement ' .
+                $topic .
+                '
+    "implement me"
+}',
+        ],
+        "python" => [
+            "example" =>
+                "# Example of " .
+                $topic .
+                '
+def main():
+    result = compute()
+    print(f"Result: {result}")
+
+def compute():
+    return "' .
+                $topic .
+                ' implementation"
+
+if __name__ == "__main__":
+    main()',
+            "explanation" =>
+                "This example demonstrates " . $topic . " in Python.",
+            "template" =>
+                "# Your " .
+                $topic .
+                ' implementation
+def main():
+    result = compute()
+    print(f"Result: {result}")
+
+def compute():
+    # TODO: Implement ' .
+                $topic .
+                '
+    return "implement me"
+
+if __name__ == "__main__":
+    main()',
+        ],
+        "javascript" => [
+            "example" =>
+                "// Example of " .
+                $topic .
+                '
+function main() {
+    const result = compute();
+    console.log(`Result: ${result}`);
+}
+
+function compute() {
+    return "' .
+                $topic .
+                ' implementation";
+}
+
+main();',
+            "explanation" =>
+                "This example demonstrates " . $topic . " in JavaScript.",
+            "template" =>
+                "// Your " .
+                $topic .
+                ' implementation
+function main() {
+    const result = compute();
+    console.log(`Result: ${result}`);
+}
+
+function compute() {
+    // TODO: Implement ' .
+                $topic .
+                '
+    return "implement me";
+}
+
+main();',
+        ],
+        "typescript" => [
+            "example" =>
+                "// Example of " .
+                $topic .
+                '
+function main(): void {
+    const result: string = compute();
+    console.log(`Result: ${result}`);
+}
+
+function compute(): string {
+    return "' .
+                $topic .
+                ' implementation";
+}
+
+main();',
+            "explanation" =>
+                "This example demonstrates " . $topic . " in TypeScript.",
+            "template" =>
+                "// Your " .
+                $topic .
+                ' implementation
+function main(): void {
+    const result: string = compute();
+    console.log(`Result: ${result}`);
+}
+
+function compute(): string {
+    // TODO: Implement ' .
+                $topic .
+                '
+    return "implement me";
+}
+
+main();',
+        ],
+        "go" => [
+            "example" =>
+                'package main
+
+import "fmt"
+
+// Example of ' .
+                $topic .
+                '
+func compute() string {
+    return "' .
+                $topic .
+                ' implementation"
+}
+
+func main() {
+    result := compute()
+    fmt.Printf("Result: %s\n", result)
+}',
+            "explanation" => "This example demonstrates " . $topic . " in Go.",
+            "template" =>
+                'package main
+
+import "fmt"
+
+func compute() string {
+    // TODO: Implement ' .
+                $topic .
+                '
+    return "implement me"
+}
+
+func main() {
+    result := compute()
+    fmt.Printf("Result: %s\n", result)
+}',
+        ],
+        "java" => [
+            "example" =>
+                "// Example of " .
+                $topic .
+                '
+public class Main {
+    public static String compute() {
+        return "' .
+                $topic .
+                ' implementation";
+    }
+
+    public static void main(String[] args) {
+        String result = compute();
+        System.out.println("Result: " + result);
+    }
+}',
+            "explanation" =>
+                "This example demonstrates " . $topic . " in Java.",
+            "template" =>
+                "// Your " .
+                $topic .
+                ' implementation
+public class Main {
+    public static String compute() {
+        // TODO: Implement ' .
+                $topic .
+                '
+        return "implement me";
+    }
+
+    public static void main(String[] args) {
+        String result = compute();
+        System.out.println("Result: " + result);
+    }
+}',
+        ],
+        "cpp" => [
+            "example" =>
+                "// Example of " .
+                $topic .
+                '
+#include <iostream>
+#include <string>
+using namespace std;
+
+string compute() {
+    return "' .
+                $topic .
+                ' implementation";
+}
+
+int main() {
+    string result = compute();
+    cout << "Result: " << result << endl;
+    return 0;
+}',
+            "explanation" => "This example demonstrates " . $topic . " in C++.",
+            "template" =>
+                "// Your " .
+                $topic .
+                ' implementation
+#include <iostream>
+#include <string>
+using namespace std;
+
+string compute() {
+    // TODO: Implement ' .
+                $topic .
+                '
+    return "implement me";
+}
+
+int main() {
+    string result = compute();
+    cout << "Result: " << result << endl;
+    return 0;
+}',
+        ],
+        "c" => [
+            "example" =>
+                "// Example of " .
+                $topic .
+                '
+#include <stdio.h>
+#include <string.h>
+
+const char* compute() {
+    return "' .
+                $topic .
+                ' implementation";
+}
+
+int main() {
+    const char* result = compute();
+    printf("Result: %s\n", result);
+    return 0;
+}',
+            "explanation" => "This example demonstrates " . $topic . " in C.",
+            "template" =>
+                "// Your " .
+                $topic .
+                ' implementation
+#include <stdio.h>
+#include <string.h>
+
+const char* compute() {
+    // TODO: Implement ' .
+                $topic .
+                '
+    return "implement me";
+}
+
+int main() {
+    const char* result = compute();
+    printf("Result: %s\n", result);
+    return 0;
+}',
+        ],
+    ];
+
+    if (isset($language_templates[$lang])) {
+        return $language_templates[$lang];
     }
 
     // Try AI generation for unknown combinations
@@ -3625,6 +4078,272 @@ fn main() {
     $lang = strtolower($language);
     if (isset($exercises[$lang][$topic])) {
         return $exercises[$lang][$topic];
+    }
+
+    // Generic topic-aware exercise templates for any language/topic
+    $exercise_templates = [
+        "rust" => [
+            "instruction" =>
+                "Write a Rust program that demonstrates " .
+                $topic .
+                ". Create a working implementation and test it.",
+            "starter_code" =>
+                'fn main() {
+    // Your ' .
+                $topic .
+                ' implementation here
+    let result = compute();
+    println!("Result: {}", result);
+}
+
+fn compute() -> &\'' .
+                'static str {
+    // TODO: Implement ' .
+                $topic .
+                '
+    "implement me"
+}',
+            "expected_output" => "Result: implement me",
+            "test_cases" => [
+                ["input" => "", "expected" => "Result: implement me"],
+            ],
+            "hints" => [
+                "Review the example code above",
+                "Start simple and build up",
+                "Test with different values",
+            ],
+        ],
+        "python" => [
+            "instruction" =>
+                "Write a Python program that demonstrates " .
+                $topic .
+                ". Create a working implementation and test it.",
+            "starter_code" =>
+                "# Your " .
+                $topic .
+                ' implementation
+def main():
+    result = compute()
+    print(f"Result: {result}")
+
+def compute():
+    # TODO: Implement ' .
+                $topic .
+                '
+    return "implement me"
+
+if __name__ == "__main__":
+    main()',
+            "expected_output" => "Result: implement me",
+            "test_cases" => [
+                ["input" => "", "expected" => "Result: implement me"],
+            ],
+            "hints" => [
+                "Review the example code above",
+                "Start simple and build up",
+                "Test with different values",
+            ],
+        ],
+        "javascript" => [
+            "instruction" =>
+                "Write a JavaScript program that demonstrates " .
+                $topic .
+                ". Create a working implementation and test it.",
+            "starter_code" =>
+                "// Your " .
+                $topic .
+                ' implementation
+function main() {
+    const result = compute();
+    console.log(`Result: ${result}`);
+}
+
+function compute() {
+    // TODO: Implement ' .
+                $topic .
+                '
+    return "implement me";
+}
+
+main();',
+            "expected_output" => "Result: implement me",
+            "test_cases" => [
+                ["input" => "", "expected" => "Result: implement me"],
+            ],
+            "hints" => [
+                "Review the example code above",
+                "Start simple and build up",
+                "Test with different values",
+            ],
+        ],
+        "typescript" => [
+            "instruction" =>
+                "Write a TypeScript program that demonstrates " .
+                $topic .
+                ". Create a working implementation and test it.",
+            "starter_code" =>
+                "// Your " .
+                $topic .
+                ' implementation
+function main(): void {
+    const result: string = compute();
+    console.log(`Result: ${result}`);
+}
+
+function compute(): string {
+    // TODO: Implement ' .
+                $topic .
+                '
+    return "implement me";
+}
+
+main();',
+            "expected_output" => "Result: implement me",
+            "test_cases" => [
+                ["input" => "", "expected" => "Result: implement me"],
+            ],
+            "hints" => [
+                "Review the example code above",
+                "Start simple and build up",
+                "Test with different values",
+            ],
+        ],
+        "go" => [
+            "instruction" =>
+                "Write a Go program that demonstrates " .
+                $topic .
+                ". Create a working implementation and test it.",
+            "starter_code" =>
+                'package main
+
+import "fmt"
+
+func compute() string {
+    // TODO: Implement ' .
+                $topic .
+                '
+    return "implement me"
+}
+
+func main() {
+    result := compute()
+    fmt.Printf("Result: %s\n", result)
+}',
+            "expected_output" => "Result: implement me",
+            "test_cases" => [
+                ["input" => "", "expected" => "Result: implement me"],
+            ],
+            "hints" => [
+                "Review the example code above",
+                "Start simple and build up",
+                "Test with different values",
+            ],
+        ],
+        "java" => [
+            "instruction" =>
+                "Write a Java program that demonstrates " .
+                $topic .
+                ". Create a working implementation and test it.",
+            "starter_code" =>
+                "// Your " .
+                $topic .
+                ' implementation
+public class Main {
+    public static String compute() {
+        // TODO: Implement ' .
+                $topic .
+                '
+        return "implement me";
+    }
+
+    public static void main(String[] args) {
+        String result = compute();
+        System.out.println("Result: " + result);
+    }
+}',
+            "expected_output" => "Result: implement me",
+            "test_cases" => [
+                ["input" => "", "expected" => "Result: implement me"],
+            ],
+            "hints" => [
+                "Review the example code above",
+                "Start simple and build up",
+                "Test with different values",
+            ],
+        ],
+        "cpp" => [
+            "instruction" =>
+                "Write a C++ program that demonstrates " .
+                $topic .
+                ". Create a working implementation and test it.",
+            "starter_code" =>
+                "// Your " .
+                $topic .
+                ' implementation
+#include <iostream>
+#include <string>
+using namespace std;
+
+string compute() {
+    // TODO: Implement ' .
+                $topic .
+                '
+    return "implement me";
+}
+
+int main() {
+    string result = compute();
+    cout << "Result: " << result << endl;
+    return 0;
+}',
+            "expected_output" => "Result: implement me",
+            "test_cases" => [
+                ["input" => "", "expected" => "Result: implement me"],
+            ],
+            "hints" => [
+                "Review the example code above",
+                "Start simple and build up",
+                "Test with different values",
+            ],
+        ],
+        "c" => [
+            "instruction" =>
+                "Write a C program that demonstrates " .
+                $topic .
+                ". Create a working implementation and test it.",
+            "starter_code" =>
+                "// Your " .
+                $topic .
+                ' implementation
+#include <stdio.h>
+#include <string.h>
+
+const char* compute() {
+    // TODO: Implement ' .
+                $topic .
+                '
+    return "implement me";
+}
+
+int main() {
+    const char* result = compute();
+    printf("Result: %s\n", result);
+    return 0;
+}',
+            "expected_output" => "Result: implement me",
+            "test_cases" => [
+                ["input" => "", "expected" => "Result: implement me"],
+            ],
+            "hints" => [
+                "Review the example code above",
+                "Start simple and build up",
+                "Test with different values",
+            ],
+        ],
+    ];
+
+    if (isset($exercise_templates[$lang])) {
+        return $exercise_templates[$lang];
     }
 
     // Try AI generation

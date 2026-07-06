@@ -17,11 +17,19 @@ try {
         ],
     );
 } catch (PDOException $e) {
+    error_log("DB connection failed: " . $e->getMessage());
+    if (
+        php_sapi_name() === "cli" ||
+        (isset($_GET["debug"]) && $_GET["debug"] === "1")
+    ) {
+        die("Database connection failed: " . $e->getMessage());
+    }
     die(json_encode(["error" => "Database connection failed"]));
 }
 
-// Core tables
-$pdo->exec("
+// Core tables with error handling
+try {
+    $pdo->exec("
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -263,8 +271,10 @@ CREATE TABLE IF NOT EXISTS daily_challenges (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (language_id) REFERENCES languages(id),
     UNIQUE KEY unique_date (date)
-);
 ");
+} catch (PDOException $e) {
+    error_log("DB schema creation error (core): " . $e->getMessage());
+}
 
 // ============== MIGRATIONS: Add missing columns to existing tables ==============
 // Uses INFORMATION_SCHEMA to check if column exists before attempting ALTER TABLE
@@ -363,7 +373,8 @@ add_column_if_not_exists(
 );
 
 // Feed / Community table
-$pdo->exec("
+try {
+    $pdo->exec("
 CREATE TABLE IF NOT EXISTS feed_posts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -402,8 +413,10 @@ CREATE TABLE IF NOT EXISTS feed_likes (
     FOREIGN KEY (post_id) REFERENCES feed_posts(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY unique_feed_like (post_id, user_id)
-);
 ");
+} catch (PDOException $e) {
+    error_log("DB feed tables creation error: " . $e->getMessage());
+}
 
 // Seed languages if empty
 $stmt = $pdo->query("SELECT COUNT(*) as count FROM languages");

@@ -3,6 +3,45 @@ $page_title = "Feed";
 $user = get_user_by_id($_SESSION["user_id"]);
 $languages = get_languages();
 
+// Handle likes/unlikes
+if (isset($_GET["like"])) {
+    $post_id = (int) $_GET["like"];
+    if ($post_id > 0) {
+        $stmt = $pdo->prepare(
+            "INSERT IGNORE INTO feed_likes (post_id, user_id) VALUES (?, ?)",
+        );
+        $stmt->execute([$post_id, $_SESSION["user_id"]]);
+    }
+    header("Location: index.php?page=feed");
+    exit();
+}
+
+if (isset($_GET["unlike"])) {
+    $post_id = (int) $_GET["unlike"];
+    if ($post_id > 0) {
+        $stmt = $pdo->prepare(
+            "DELETE FROM feed_likes WHERE post_id = ? AND user_id = ?",
+        );
+        $stmt->execute([$post_id, $_SESSION["user_id"]]);
+    }
+    header("Location: index.php?page=feed");
+    exit();
+}
+
+// Handle comment submission
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_comment"])) {
+    $post_id = (int) ($_POST["post_id"] ?? 0);
+    $comment_content = sanitize($_POST["comment_content"] ?? "");
+    if ($post_id > 0 && !empty($comment_content)) {
+        $stmt = $pdo->prepare(
+            "INSERT INTO feed_comments (post_id, user_id, content, created_at) VALUES (?, ?, ?, NOW())",
+        );
+        $stmt->execute([$post_id, $_SESSION["user_id"], $comment_content]);
+    }
+    header("Location: index.php?page=feed&view=" . $post_id);
+    exit();
+}
+
 // Handle post creation
 $post_error = "";
 $post_success = "";
@@ -114,7 +153,7 @@ $post_types = [
                 <div style="background:rgba(233,25,123,0.1); border:1px solid rgba(233,25,123,0.2); border-radius:8px; padding:12px; margin-bottom:16px;">
                     <span style="color:#E9197B; font-size:13px;"><?= htmlspecialchars(
                         $post_error,
-                        ENT_NOQUOTES,
+                        ENT_QUOTES,
                         "UTF-8",
                     ) ?></span>
                 </div>
@@ -123,7 +162,7 @@ $post_types = [
                 <div style="background:rgba(0,217,90,0.1); border:1px solid rgba(0,217,90,0.2); border-radius:8px; padding:12px; margin-bottom:16px;">
                     <span style="color:#00D95A; font-size:13px;"><?= htmlspecialchars(
                         $post_success,
-                        ENT_NOQUOTES,
+                        ENT_QUOTES,
                         "UTF-8",
                     ) ?></span>
                 </div>
@@ -205,8 +244,8 @@ $type
                 $post["comments_count_real"],
             );
             $post_content = htmlspecialchars(
-                $post["content"],
-                ENT_NOQUOTES,
+                html_entity_decode($post["content"], ENT_QUOTES, "UTF-8"),
+                ENT_QUOTES,
                 "UTF-8",
             );
             $post_content = preg_replace(
@@ -235,7 +274,7 @@ $type
                             <div class="flex items-center gap-2">
                                 <span class="font-bold text-sm"><?= htmlspecialchars(
                                     $post["username"],
-                                    ENT_NOQUOTES,
+                                    ENT_QUOTES,
                                     "UTF-8",
                                 ) ?></span>
                                 <span class="lang-pill" style="background:<?= $type_info[
@@ -257,7 +296,7 @@ $type
                     <?php if ($post["title"]): ?>
                         <h3 class="font-bold text-lg mb-2"><?= htmlspecialchars(
                             $post["title"],
-                            ENT_NOQUOTES,
+                            ENT_QUOTES,
                             "UTF-8",
                         ) ?></h3>
                     <?php endif; ?>
@@ -266,8 +305,12 @@ $type
 
                     <?php if ($post["code_snippet"]): ?>
                         <pre style="background:#0E0E10; border:1px solid #2D2D35; border-radius:8px; padding:12px; overflow-x:auto; margin-bottom:12px;"><code style="font-size:12px; color:#ADADB8;"><?= htmlspecialchars(
-                            $post["code_snippet"],
-                            ENT_NOQUOTES,
+                            html_entity_decode(
+                                $post["code_snippet"],
+                                ENT_QUOTES,
+                                "UTF-8",
+                            ),
+                            ENT_QUOTES,
                             "UTF-8",
                         ) ?></code></pre>
                     <?php endif; ?>
@@ -279,11 +322,7 @@ $type
                                 as $tag
                             ): ?>
                                 <span style="background:rgba(145,71,255,0.1); color:#A970FF; padding:2px 8px; border-radius:4px; font-size:11px;">#<?= trim(
-                                    htmlspecialchars(
-                                        $tag,
-                                        ENT_NOQUOTES,
-                                        "UTF-8",
-                                    ),
+                                    htmlspecialchars($tag, ENT_QUOTES, "UTF-8"),
                                 ) ?></span>
                             <?php endforeach; ?>
                         </div>
@@ -339,7 +378,7 @@ $type
                                             <div class="flex items-center gap-2">
                                                 <span class="font-bold text-xs"><?= htmlspecialchars(
                                                     $comment["username"],
-                                                    ENT_NOQUOTES,
+                                                    ENT_QUOTES,
                                                     "UTF-8",
                                                 ) ?></span>
                                                 <span class="text-xs text-twitch-muted"><?= time_ago(
@@ -347,8 +386,12 @@ $type
                                                 ) ?></span>
                                             </div>
                                             <p class="text-sm text-twitch-muted mt-1"><?= htmlspecialchars(
-                                                $comment["content"],
-                                                ENT_NOQUOTES,
+                                                html_entity_decode(
+                                                    $comment["content"],
+                                                    ENT_QUOTES,
+                                                    "UTF-8",
+                                                ),
+                                                ENT_QUOTES,
                                                 "UTF-8",
                                             ) ?></p>
                                         </div>

@@ -1051,7 +1051,7 @@
                     <?= get_avatar_html(
                         $current_user,
                         32,
-                        $current_user["is_online"] ?? false ? "online" : "",
+                        !empty($current_user["is_online"]) ? "online" : "",
                     ) ?>
                     <div class="tw-user-info">
                         <div class="name"><?= htmlspecialchars(

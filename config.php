@@ -38,13 +38,13 @@ define("BR_MIN_PLAYERS_TO_START", 2);
 // AI Tutor settings
 define("AI_TUTOR_ENABLED", true);
 define("AI_TUTOR_MODEL", "big-pickle");
-define("AI_TUTOR_MAX_TOKENS", 1024);
+define("AI_TUTOR_MAX_TOKENS", 2048);
 define("AI_TUTOR_TEMPERATURE", 0.7);
 
 // OpenCode API Configuration
-// Get your API key from https://opencode.com/settings/api
-// Leave OPENCODE_API_KEY empty to use built-in Big Pickle AI responses (fallback mode)
-// The built-in fallback is context-aware and doesn't need an API key
+// Get your API key from https://opencode.ai/settings/api
+// Model: big-pickle
+// Base URL: https://opencode.ai/zen/v1
 define(
     "OPENCODE_API_KEY",
     "sk-A4roVvunrQ1woG7zQFWIUO0XIUIV46vFEDib6Ezh2zccwWs5EbnjukJv5hzu6Uby",
