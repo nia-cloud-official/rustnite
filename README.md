@@ -1,18 +1,18 @@
 # Rustnite
 
-A multi-language battle-royale coding arena inspired by Twitch. Learn, compete, and level up across 8 programming languages with AI-powered lessons, real code execution, and community features.
+A multi-language battle-royale coding arena inspired by Twitch. Learn, compete, and level up across 8 programming languages with AI-powered lessons, real code execution via Piston API, and community features.
 
 ---
 
 ## Features
 
 ### 🎮 Battle Royale Arena
-- Real-time coding competitions (solo, duo, squad)
+- Coding competitions (solo, duo, squad)
 - Language-specific leaderboards
 - XP and leveling system with streaks
 
 ### 🤖 AI Learning (Powered by OpenCode Big Pickle)
-- AI coding tutor with markdown responses and code highlighting
+- AI coding tutor with rendered markdown and code highlighting
 - Dynamic lesson generation for all 8 languages
 - Auto-generated coding exercises and daily challenges
 - AI-generated mini-games
@@ -40,18 +40,16 @@ A multi-language battle-royale coding arena inspired by Twitch. Learn, compete, 
 - Notification system
 - GitHub OAuth login
 
-### ✨ Code Editor
-- Monaco Editor with language-specific syntax highlighting
-- Real code execution via Piston API (with fallback)
-- Code linting and formatting
-- Multi-language support
+### ✨ Code Editor (Monaco)
+- Language-specific syntax highlighting
+- Real code execution via Piston API
+- Multi-language support with correct templates
 
 ### 🎨 UI/UX
 - Twitch-inspired dark theme
-- Glitch text effects, animated gradients, floating orbs
 - Smooth animations (slide-up, fade-in, bounce-in)
-- Scan-line and shimmer effects
 - Confetti on achievements
+- Responsive mobile-friendly design
 
 ---
 

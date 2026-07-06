@@ -167,6 +167,8 @@ if (isset($_GET["github_callback"]) && isset($_GET["code"])) {
     exit();
 }
 
+session_write_close();
+
 $github_error = $_SESSION["github_error"] ?? "";
 unset($_SESSION["github_error"]);
 $display_error = $error ?: $github_error;
