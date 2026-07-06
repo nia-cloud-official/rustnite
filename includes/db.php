@@ -246,7 +246,7 @@ CREATE TABLE IF NOT EXISTS ai_messages (
     FOREIGN KEY (chat_id) REFERENCES ai_chats(id) ON DELETE CASCADE
 );
 
-$pdo->exec("
+-- Daily challenges
 CREATE TABLE IF NOT EXISTS daily_challenges (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
@@ -404,8 +404,6 @@ CREATE TABLE IF NOT EXISTS feed_likes (
     UNIQUE KEY unique_feed_like (post_id, user_id)
 );
 ");
-
-
 
 // Seed languages if empty
 $stmt = $pdo->query("SELECT COUNT(*) as count FROM languages");

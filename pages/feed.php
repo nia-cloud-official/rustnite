@@ -375,16 +375,12 @@ $type
         <?php if ($total_pages > 1 && $view_post_id === 0): ?>
             <div class="flex items-center justify-center gap-2 mt-6">
                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                    <a href="?page=feed&p=<?=
-                    $i
-                    !empty($filter_type)
-                        ? "&type=" . urlencode($filter_type)
-                        : ""
-                    ?>" class="tw-btn <?= $i === $page_num
+                    <a href="?page=feed&p=<?= $i .
+                        (!empty($filter_type)
+                            ? "&type=" . urlencode($filter_type)
+                            : "") ?>" class="tw-btn <?= $i === $page_num
     ? "tw-btn-primary"
-    : "tw-btn-ghost" ?> tw-btn-sm">
-                        <?= $i ?>
-                    </a>
+    : "tw-btn-ghost" ?> tw-btn-sm"><?= $i ?></a>
                 <?php endfor; ?>
             </div>
         <?php endif; ?>
