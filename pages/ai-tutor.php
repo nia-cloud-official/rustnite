@@ -26,6 +26,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["message"])) {
         if (isset($result["error"])) {
             echo json_encode(["success" => false, "error" => $result["error"]]);
         } else {
+            $result["chat_id"] = $chat_id;
             echo json_encode($result);
         }
     } else {
@@ -253,7 +254,7 @@ function sendMessage(e) {
     const input = document.getElementById('message-input');
     const message = input.value.trim();
 
-    if (!message || isSending || !chatId) return;
+    if (!message || isSending) return;
 
     // Add user message to UI immediately
     addMessage('user', message);
@@ -278,7 +279,7 @@ function sendMessage(e) {
     // Send to server via AJAX
     const formData = new FormData();
     formData.append('message', message);
-    formData.append('chat_id', chatId);
+    formData.append('chat_id', chatId || 0);
     formData.append('language', document.querySelector('select[name="language"]')?.value || 'rust');
 
     fetch('index.php?page=ai-tutor', {
@@ -290,19 +291,18 @@ function sendMessage(e) {
         document.getElementById('typing-indicator')?.remove();
 
         if (data.success) {
+            // Update chat_id if a new chat was created
+            if (data.chat_id && data.chat_id !== chatId) {
+                chatId = data.chat_id;
+                window.history.replaceState({}, '', 'index.php?page=ai-tutor&chat_id=' + chatId);
+                loadChatList();
+            }
             addMessage('assistant', data.rendered || data.response);
             if (data.xp_earned) {
-                showToast(`+${data.xp_earned} XP for asking a question!`, 'success');
-            }
-
-            // Render code blocks if any
-            if (data.code_blocks && data.code_blocks.length > 0) {
-                data.code_blocks.forEach(block => {
-                    // Code blocks are already in the response text
-                });
+                showToast(`+${data.xp_earned} XP`, 'success');
             }
         } else {
-            addMessage('assistant', 'Sorry, I encountered an error. Please try again!');
+            addMessage('assistant', data.error || 'Sorry, I encountered an error. Please try again!');
             showToast('Failed to get response', 'error');
         }
     })
@@ -359,6 +359,16 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function loadChatList() {
+    fetch('index.php?page=ai-tutor&ajax_chats=1')
+        .then(res => res.text())
+        .then(html => {
+            // Reload the page to refresh chat list (simple approach)
+            location.reload();
+        })
+        .catch(() => {});
 }
 
 // Auto-scroll on load
