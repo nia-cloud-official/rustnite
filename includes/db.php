@@ -267,30 +267,95 @@ CREATE TABLE IF NOT EXISTS daily_challenges (
 ");
 
 // ============== MIGRATIONS: Add missing columns to existing tables ==============
-// These run after CREATE TABLE IF NOT EXISTS to handle existing tables that don't have new columns
-$migrations = [
-    "ALTER TABLE users ADD COLUMN is_online BOOLEAN DEFAULT FALSE",
-    "ALTER TABLE users ADD COLUMN current_streak INT DEFAULT 0",
-    "ALTER TABLE users ADD COLUMN last_activity_date DATE DEFAULT NULL",
-    "ALTER TABLE users ADD COLUMN longest_streak INT DEFAULT 0",
-    "ALTER TABLE users ADD COLUMN total_xp_earned INT DEFAULT 0",
-    "ALTER TABLE users ADD COLUMN preferred_language INT DEFAULT 1",
-    "ALTER TABLE users ADD COLUMN show_online_status BOOLEAN DEFAULT TRUE",
-    "ALTER TABLE lessons ADD COLUMN language_id INT DEFAULT 1",
-    "ALTER TABLE lessons ADD COLUMN starter_code TEXT DEFAULT NULL",
-    "ALTER TABLE lessons ADD COLUMN code_template TEXT DEFAULT NULL",
-    "ALTER TABLE lessons ADD COLUMN expected_output TEXT DEFAULT NULL",
-    "ALTER TABLE lessons ADD COLUMN test_cases JSON DEFAULT NULL",
-    "ALTER TABLE lessons ADD COLUMN hints TEXT DEFAULT NULL",
-    "ALTER TABLE lessons ADD COLUMN category VARCHAR(50) DEFAULT 'basics'",
-    "ALTER TABLE lessons ADD COLUMN order_num INT DEFAULT 0",
-    "ALTER TABLE daily_challenges ADD COLUMN starter_code TEXT DEFAULT NULL",
-    "ALTER TABLE daily_challenges ADD COLUMN test_cases JSON DEFAULT NULL",
-    "ALTER TABLE daily_challenges ADD COLUMN bonus_xp INT DEFAULT 50",
-    "ALTER TABLE daily_challenges ADD COLUMN challenge_type ENUM('coding', 'debugging', 'optimization', 'algorithm') DEFAULT 'coding'",
-    "ALTER TABLE users ADD COLUMN github_id VARCHAR(255) DEFAULT NULL",
-    "ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500) DEFAULT NULL",
-];
+// Uses INFORMATION_SCHEMA to check if column exists before attempting ALTER TABLE
+// This avoids errors from trying to add columns that already exist
+
+function add_column_if_not_exists($pdo, $table, $column, $definition)
+{
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?
+    ");
+    $stmt->execute([DB_NAME, $table, $column]);
+    if ($stmt->fetchColumn() == 0) {
+        $sql = "ALTER TABLE `{$table}` ADD COLUMN {$definition}";
+        $pdo->exec($sql);
+        return true;
+    }
+    return false;
+}
+
+add_column_if_not_exists($pdo, "users", "is_online", "BOOLEAN DEFAULT FALSE");
+add_column_if_not_exists($pdo, "users", "current_streak", "INT DEFAULT 0");
+add_column_if_not_exists(
+    $pdo,
+    "users",
+    "last_activity_date",
+    "DATE DEFAULT NULL",
+);
+add_column_if_not_exists($pdo, "users", "longest_streak", "INT DEFAULT 0");
+add_column_if_not_exists($pdo, "users", "total_xp_earned", "INT DEFAULT 0");
+add_column_if_not_exists($pdo, "users", "preferred_language", "INT DEFAULT 1");
+add_column_if_not_exists(
+    $pdo,
+    "users",
+    "show_online_status",
+    "BOOLEAN DEFAULT TRUE",
+);
+add_column_if_not_exists(
+    $pdo,
+    "users",
+    "github_id",
+    "VARCHAR(255) DEFAULT NULL",
+);
+add_column_if_not_exists(
+    $pdo,
+    "users",
+    "avatar_url",
+    "VARCHAR(500) DEFAULT NULL",
+);
+add_column_if_not_exists($pdo, "lessons", "language_id", "INT DEFAULT 1");
+add_column_if_not_exists($pdo, "lessons", "starter_code", "TEXT DEFAULT NULL");
+add_column_if_not_exists($pdo, "lessons", "code_template", "TEXT DEFAULT NULL");
+add_column_if_not_exists(
+    $pdo,
+    "lessons",
+    "expected_output",
+    "TEXT DEFAULT NULL",
+);
+add_column_if_not_exists($pdo, "lessons", "test_cases", "JSON DEFAULT NULL");
+add_column_if_not_exists($pdo, "lessons", "hints", "TEXT DEFAULT NULL");
+add_column_if_not_exists(
+    $pdo,
+    "lessons",
+    "category",
+    "VARCHAR(50) DEFAULT 'basics'",
+);
+add_column_if_not_exists($pdo, "lessons", "order_num", "INT DEFAULT 0");
+add_column_if_not_exists(
+    $pdo,
+    "daily_challenges",
+    "starter_code",
+    "TEXT DEFAULT NULL",
+);
+add_column_if_not_exists(
+    $pdo,
+    "daily_challenges",
+    "test_cases",
+    "JSON DEFAULT NULL",
+);
+add_column_if_not_exists(
+    $pdo,
+    "daily_challenges",
+    "bonus_xp",
+    "INT DEFAULT 50",
+);
+add_column_if_not_exists(
+    $pdo,
+    "daily_challenges",
+    "challenge_type",
+    "ENUM('coding', 'debugging', 'optimization', 'algorithm') DEFAULT 'coding'",
+);
 
 // Feed / Community table
 $pdo->exec("
