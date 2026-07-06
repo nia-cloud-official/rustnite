@@ -124,22 +124,14 @@ $languages = get_languages();
                     <a href="https://github.com/login/oauth/authorize?client_id=<?= GITHUB_CLIENT_ID ?>&redirect_uri=<?= urlencode(
     GITHUB_REDIRECT_URI,
 ) ?>&scope=user:email"
-                       class="tw-btn tw-btn-block"
-                       style="background:#24292e; color:white; justify-content:center; border:1px solid #3A3A45;">
-                        <i class="fab fa-github"></i>
-                        Sign up with GitHub
-                    </a>
-                    <?php else: ?>
-                    <div style="text-align:center; padding:12px; background:rgba(145,71,255,0.05); border:1px solid rgba(145,71,255,0.15); border-radius:8px;">
-                        <p class="text-xs text-twitch-muted">
-                            <i class="fab fa-github mr-1"></i>
-                            GitHub login requires an OAuth App —
-                            <a href="https://github.com/settings/developers" target="_blank" style="color:#9147FF; text-decoration:underline;">create one</a>
-                            and set <code style="font-size:10px; background:#0E0E10; padding:1px 4px; border-radius:3px;">GITHUB_CLIENT_ID</code> & <code style="font-size:10px; background:#0E0E10; padding:1px 4px; border-radius:3px;">GITHUB_CLIENT_SECRET</code> in config.php
-                        </p>
-                    </div>
-                    <?php endif; ?>
-                </div>
+                       <div style="margin-top:16px; border-top:1px solid #2D2D35; padding-top:16px;">
+                           <a href="https://github.com/login/oauth/authorize?client_id=<?= defined('GITHUB_CLIENT_ID') ? GITHUB_CLIENT_ID : '' ?>&redirect_uri=<?= urlencode(defined('GITHUB_REDIRECT_URI') ? GITHUB_REDIRECT_URI : '') ?>&scope=user:email"
+                              class="tw-btn tw-btn-block"
+                              style="background:#24292e; color:white; justify-content:center; border:1px solid #3A3A45;">
+                               <i class="fab fa-github"></i>
+                               Sign up with GitHub
+                           </a>
+                       </div>
             </div>
         </div>
     </div>
