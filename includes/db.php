@@ -314,7 +314,6 @@ add_column_if_not_exists(
     "avatar_url",
     "VARCHAR(500) DEFAULT NULL",
 );
-add_column_if_not_exists($pdo, "lessons", "language_id", "INT DEFAULT 1");
 add_column_if_not_exists($pdo, "lessons", "starter_code", "TEXT DEFAULT NULL");
 add_column_if_not_exists($pdo, "lessons", "code_template", "TEXT DEFAULT NULL");
 add_column_if_not_exists(
@@ -323,7 +322,12 @@ add_column_if_not_exists(
     "expected_output",
     "TEXT DEFAULT NULL",
 );
-add_column_if_not_exists($pdo, "lessons", "test_cases", "JSON DEFAULT NULL");
+add_column_if_not_exists(
+    $pdo,
+    "lessons",
+    "test_cases",
+    "LONGTEXT DEFAULT NULL",
+);
 add_column_if_not_exists($pdo, "lessons", "hints", "TEXT DEFAULT NULL");
 add_column_if_not_exists(
     $pdo,

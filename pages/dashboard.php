@@ -7,10 +7,10 @@ $streak = $user["current_streak"] ?? 0;
 
 // Get user rank
 $stmt = $pdo->prepare("SELECT id, username, xp,
-    (SELECT COUNT(*) + 1 FROM users u2 WHERE u2.xp > u.xp) as rank
+    (SELECT COUNT(*) + 1 FROM users u2 WHERE u2.xp > u.xp) as user_rank
     FROM users u WHERE u.id = ?");
 $stmt->execute([$_SESSION["user_id"]]);
-$user_rank = $stmt->fetch()["rank"] ?? 0;
+$user_rank = $stmt->fetch()["user_rank"] ?? 0;
 
 // Recent activity
 $stmt = $pdo->prepare("

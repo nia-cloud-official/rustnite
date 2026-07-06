@@ -174,14 +174,13 @@ function get_user_progress($user_id, $language_id = null)
         $params[] = $language_id;
     }
 
-    $sql .= " ORDER BY l.language_id, l.order_num";
+    $sql .= " ORDER BY l.order_num";
 
     try {
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll();
     } catch (PDOException $e) {
-        // Fallback: order without language_id if column doesn't exist yet
         $sql = "
             SELECT l.*, up.completed, up.completed_at
             FROM lessons l

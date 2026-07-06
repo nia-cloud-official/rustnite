@@ -1051,16 +1051,15 @@
                     <?= get_avatar_html(
                         $current_user,
                         32,
-                        !empty($current_user["is_online"]) ? "online" : "",
+                        $current_user["is_online"] ?? false ? "online" : "",
                     ) ?>
-                                        <div class="tw-user-info">
+                    <div class="tw-user-info">
                         <div class="name"><?= htmlspecialchars(
-                            $current_user["username"],
+                            $current_user["username"] ?? "",
                         ) ?></div>
-                        <div class="xp">Level <?= $current_user[
-                            "level"
-                        ] ?> · <?= number_format(
-     $current_user["xp"],
+                        <div class="xp">Level <?= $current_user["level"] ??
+                            1 ?> · <?= number_format(
+     $current_user["xp"] ?? 0,
  ) ?> XP</div>
                     </div>
                 </div>
@@ -1088,10 +1087,11 @@
         <!-- XP Bar (for logged in users) -->
         <?php if (isset($_SESSION["user_id"]) && isset($current_user)):
 
-            $xp_for_level = get_xp_for_next_level($current_user["xp"]);
-            $current_level_xp = ($current_user["level"] - 1) * XP_PER_LEVEL;
+            $xp_for_level = get_xp_for_next_level($current_user["xp"] ?? 0);
+            $current_level_xp =
+                (($current_user["level"] ?? 1) - 1) * XP_PER_LEVEL;
             $progress =
-                (($current_user["xp"] - $current_level_xp) /
+                (($current_user["xp"] ?? 0 - $current_level_xp) /
                     ($xp_for_level - $current_level_xp)) *
                 100;
             $progress = max(0, min(100, $progress));
@@ -1101,7 +1101,7 @@
                 <div class="flex items-center gap-2">
                     <span class="text-xs text-twitch-muted font-medium">Level <?= $current_user[
                         "level"
-                    ] ?></span>
+                    ] ?? 1 ?></span>
                     <span class="text-xs text-twitch-purple font-bold"><i class="fas fa-bolt"></i></span>
                 </div>
                 <div class="flex items-center gap-3">
@@ -1111,7 +1111,7 @@
                     </span>
                     <span class="text-xs text-twitch-muted">
                         <?= number_format(
-                            $current_user["xp"],
+                            $current_user["xp"] ?? 0,
                         ) ?> / <?= number_format($xp_for_level) ?> XP
                     </span>
                 </div>

@@ -31,6 +31,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $stmt->execute([$username, $email]);
         if ($stmt->fetch()) {
             $errors[] = "Username or email already exists";
+        } else {
+            $hashed = password_hash($password, HASH_ALGO);
+            $stmt = $pdo->prepare(
+                "INSERT INTO users (username, email, password, xp, level) VALUES (?, ?, ?, 0, 1)",
+            );
+            $stmt->execute([$username, $email, $hashed]);
+            $_SESSION["user_id"] = $pdo->lastInsertId();
+            $_SESSION["username"] = $username;
+            update_user_activity($_SESSION["user_id"]);
+            header("Location: index.php?page=dashboard");
+            exit();
         }
     }
 }
@@ -141,15 +152,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const val = this.value;
             const help = this.nextElementSibling;
             const isValid = /^[a-zA-Z0-9_]{3,}$/.test(val);
-
             if (val.length === 0) {
                 help.textContent = '3+ characters, letters, numbers, underscores';
                 help.className = 'text-xs text-twitch-muted mt-1';
             } else if (isValid) {
-                help.textContent = '✓ Looks good!';
+                help.textContent = 'Looks good!';
                 help.className = 'text-xs text-green-400 mt-1';
             } else {
-                help.textContent = '✗ Invalid format';
+                help.textContent = 'Invalid format';
                 help.className = 'text-xs text-red-400 mt-1';
             }
         });
@@ -159,7 +169,6 @@ document.addEventListener('DOMContentLoaded', function() {
         passwordInput.addEventListener('input', function() {
             const val = this.value;
             const help = this.nextElementSibling;
-
             if (val.length < 6) {
                 help.textContent = `Too short (${val.length}/6)`;
                 help.className = 'text-xs text-red-400 mt-1';
@@ -170,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 help.textContent = 'Good password';
                 help.className = 'text-xs text-blue-400 mt-1';
             } else {
-                help.textContent = 'Strong password! 💪';
+                help.textContent = 'Strong password!';
                 help.className = 'text-xs text-green-400 mt-1';
             }
         });

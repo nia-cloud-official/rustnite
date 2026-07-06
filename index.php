@@ -34,18 +34,6 @@ if (!in_array($page, $allowed_pages)) {
 
 // Handle logout
 if ($page === "logout") {
-    if (isset($_SESSION["user_id"])) {
-        try {
-            $stmt = $pdo->query("SHOW COLUMNS FROM users LIKE 'is_online'");
-            if ($stmt->fetch()) {
-                $stmt = $pdo->prepare(
-                    "UPDATE users SET is_online = FALSE WHERE id = ?",
-                );
-                $stmt->execute([$_SESSION["user_id"]]);
-            }
-        } catch (PDOException $e) {
-        }
-    }
     session_destroy();
     header("Location: index.php");
     exit();
