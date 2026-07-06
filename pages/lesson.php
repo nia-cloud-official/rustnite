@@ -5,67 +5,40 @@ $lesson_id = (int) ($_GET["id"] ?? 0);
 $lesson = get_lesson_by_id($lesson_id);
 
 $lesson_lang = strtolower($lesson["language_slug"] ?? "rust");
-if ($lesson_lang !== "rust") {
-    $rust_patterns = [
-        "fn main()",
-        "println!",
-        "rustc",
-        "// Write your code here",
-    ];
 
-    // Detect if any field has Rust code
-    $has_rust = false;
-    foreach (["starter_code", "code_template", "content"] as $field) {
-        if (!empty($lesson[$field])) {
-            foreach ($rust_patterns as $pat) {
-                if (str_contains($lesson[$field], $pat)) {
-                    $has_rust = true;
-                    break 2;
-                }
-            }
-        }
-    }
+// Always ensure lesson content matches the correct language
+$title_parts = explode(": ", $lesson["title"] ?? "");
+$topic =
+    count($title_parts) > 1
+        ? trim($title_parts[1])
+        : $lesson["title"] ?? "Programming";
+$diff = $lesson["difficulty"] ?? "beginner";
 
-    if ($has_rust) {
-        // Regenerate content, starter_code and code_template for this lesson
-        // Extract topic from title (format: "Language: Topic")
-        $title_parts = explode(": ", $lesson["title"] ?? "");
-        $topic =
-            count($title_parts) > 1
-                ? trim($title_parts[1])
-                : $lesson["title"] ?? "Programming";
-        $diff = $lesson["difficulty"] ?? "beginner";
-        $lang_info = get_language_by_slug($lesson_lang);
-        if ($lang_info) {
-            $new_content = build_lesson_content($lang_info, $diff, $topic);
-            $lesson["content"] = $new_content["content"];
-            $lesson["starter_code"] = $new_content["starter_code"];
-            $lesson["code_template"] = $new_content["code_template"];
-            $lesson["expected_output"] = $new_content["expected_output"];
-            $lesson["hints"] = $new_content["hints"];
-            // Save to database so it persists
-            $stmt = $pdo->prepare(
-                "UPDATE lessons SET content = ?, starter_code = ?, code_template = ?, expected_output = ?, hints = ? WHERE id = ?",
-            );
-            $stmt->execute([
-                $new_content["content"],
-                $new_content["starter_code"],
-                $new_content["code_template"],
-                $new_content["expected_output"],
-                $new_content["hints"],
-                $lesson["id"],
-            ]);
-        } else {
-            // Fallback: just fix starter_code and code_template
-            $fallback_ex = get_language_fallback_exercise($lesson_lang, $topic);
-            $fallback_example = get_language_fallback_example(
-                $lesson_lang,
-                $topic,
-            );
-            $lesson["starter_code"] = $fallback_ex["starter_code"];
-            $lesson["code_template"] = $fallback_example["template"];
-        }
-    }
+$lang_info = get_language_by_slug($lesson_lang);
+if ($lang_info) {
+    $new_content = build_lesson_content($lang_info, $diff, $topic);
+    $lesson["content"] = $new_content["content"];
+    $lesson["starter_code"] = $new_content["starter_code"];
+    $lesson["code_template"] = $new_content["code_template"];
+    $lesson["expected_output"] = $new_content["expected_output"];
+    $lesson["hints"] = $new_content["hints"];
+    // Save to database so it persists
+    $stmt = $pdo->prepare(
+        "UPDATE lessons SET content = ?, starter_code = ?, code_template = ?, expected_output = ?, hints = ? WHERE id = ?",
+    );
+    $stmt->execute([
+        $new_content["content"],
+        $new_content["starter_code"],
+        $new_content["code_template"],
+        $new_content["expected_output"],
+        $new_content["hints"],
+        $lesson["id"],
+    ]);
+} else {
+    $fallback_ex = get_language_fallback_exercise($lesson_lang, $topic);
+    $fallback_example = get_language_fallback_example($lesson_lang, $topic);
+    $lesson["starter_code"] = $fallback_ex["starter_code"];
+    $lesson["code_template"] = $fallback_example["template"];
 }
 
 $is_completed = is_lesson_completed($_SESSION["user_id"], $lesson_id);

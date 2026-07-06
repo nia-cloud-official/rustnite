@@ -5,6 +5,52 @@ $chats = get_ai_chats($_SESSION["user_id"]);
 $current_chat_id = (int) ($_GET["chat_id"] ?? 0);
 $languages = get_languages();
 
+// Handle AJAX message sending
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["message"])) {
+    header("Content-Type: application/json");
+    $chat_id = (int) ($_POST["chat_id"] ?? 0);
+    $message = $_POST["message"] ?? "";
+    $language = $_POST["language"] ?? "rust";
+
+    if ($chat_id <= 0) {
+        // Create a new chat
+        $chat_id = create_ai_chat(
+            $_SESSION["user_id"],
+            $language,
+            substr($message, 0, 50),
+        );
+    }
+
+    if ($chat_id > 0 && !empty($message)) {
+        $result = ask_ai_tutor($chat_id, $_SESSION["user_id"], $message);
+        if (isset($result["error"])) {
+            echo json_encode(["success" => false, "error" => $result["error"]]);
+        } else {
+            echo json_encode($result);
+        }
+    } else {
+        echo json_encode(["success" => false, "error" => "Invalid request"]);
+    }
+    exit();
+}
+
+// Handle new chat creation
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["new_chat"])) {
+    $language = $_POST["language"] ?? "rust";
+    $chat_id = create_ai_chat($_SESSION["user_id"], $language);
+    header("Location: index.php?page=ai-tutor&chat_id=" . $chat_id);
+    exit();
+}
+
+// Handle chat deletion
+if (isset($_GET["delete_chat"])) {
+    $chat_id = (int) $_GET["delete_chat"];
+    $stmt = $pdo->prepare("DELETE FROM ai_chats WHERE id = ? AND user_id = ?");
+    $stmt->execute([$chat_id, $_SESSION["user_id"]]);
+    header("Location: index.php?page=ai-tutor");
+    exit();
+}
+
 // Get messages for current chat
 $messages = [];
 if ($current_chat_id) {
