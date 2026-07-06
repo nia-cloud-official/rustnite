@@ -47,7 +47,7 @@ define("AI_TUTOR_TEMPERATURE", 0.7);
 // The built-in fallback is context-aware and doesn't need an API key
 define(
     "OPENCODE_API_KEY",
-    "", // <-- SET YOUR API KEY HERE from https://opencode.com/settings/api
+    "sk-A4roVvunrQ1woG7zQFWIUO0XIUIV46vFEDib6Ezh2zccwWs5EbnjukJv5hzu6Uby",
 );
 define("OPENCODE_API_URL", "https://opencode.com/api/chat"); // OpenCode API endpoint
 
