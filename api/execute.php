@@ -119,6 +119,7 @@ if ($result["success"]) {
 
 $sim_result = simulate_execution($code, $lesson_id, $lang);
 echo json_encode($sim_result);
+exit();
 
 function get_restricted_patterns($language)
 {
@@ -332,11 +333,15 @@ function simulate_execution($code, $lesson_id, $lang)
     global $pdo;
     $expected_output = "";
     if ($lesson_id > 0) {
-        $stmt = $pdo->prepare(
-            "SELECT expected_output FROM lessons WHERE id = ?",
-        );
-        $stmt->execute([$lesson_id]);
-        $expected_output = $stmt->fetchColumn() ?: "";
+        try {
+            $stmt = $pdo->prepare(
+                "SELECT expected_output FROM lessons WHERE id = ?",
+            );
+            $stmt->execute([$lesson_id]);
+            $expected_output = $stmt->fetchColumn() ?: "";
+        } catch (PDOException $e) {
+            $expected_output = "";
+        }
     }
     $output = "";
     $stderr = "";

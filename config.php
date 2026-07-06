@@ -115,5 +115,8 @@ define(
 );
 
 // Error reporting
-error_reporting(E_ALL);
-ini_set("display_errors", 1);
+// Only enable display_errors if not already suppressed (e.g. by api/execute.php)
+if (ini_get("display_errors") !== "0") {
+    error_reporting(E_ALL);
+    ini_set("display_errors", 1);
+}
