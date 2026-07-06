@@ -206,6 +206,14 @@ function execute_code($code, $lang)
         return $result;
     }
 
+    // Try Piston API v1 as fallback
+    if (!$result["success"]) {
+        $result = execute_with_piston_v1($code, $lang);
+        if ($result["success"]) {
+            return $result;
+        }
+    }
+
     // For Rust, try the Rust Playground
     if ($lang["slug"] === "rust") {
         $result = execute_with_playground($code);
@@ -317,17 +325,38 @@ function execute_with_piston($code, $lang)
         "c" => "c",
     ];
     $piston_lang = $map[$lang["slug"]] ?? "rust";
+
+    // Map file extensions based on language
+    $ext_map = [
+        "rust" => "rs",
+        "python" => "py",
+        "javascript" => "js",
+        "typescript" => "ts",
+        "go" => "go",
+        "java" => "java",
+        "cpp" => "cpp",
+        "c" => "c",
+    ];
+    $ext = $ext_map[$piston_lang] ?? "txt";
+
+    // For Java, class name must match filename
+    $filename = $piston_lang === "java" ? "Main" : "main";
+
     $payload = json_encode([
         "language" => $piston_lang,
         "version" => "*",
-        "files" => [["name" => "main", "content" => $code]],
+        "files" => [["name" => $filename . "." . $ext, "content" => $code]],
+        "compileTimeout" => 10000,
+        "runTimeout" => 5000,
     ]);
+
     $ch = curl_init("https://emkc.org/api/v2/piston/execute");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
     curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $error = curl_error($ch);
@@ -338,17 +367,31 @@ function execute_with_piston($code, $lang)
         if (isset($result["run"])) {
             $output = $result["run"]["stdout"] ?? "";
             $stderr = $result["run"]["stderr"] ?? "";
-            if (($result["run"]["code"] ?? 0) !== 0 && empty($output)) {
-                $stderr = $result["compile"]["stderr"] ?? $stderr;
+            $exit_code = $result["run"]["code"] ?? 0;
+
+            if (
+                isset($result["compile"]["stderr"]) &&
+                !empty($result["compile"]["stderr"])
+            ) {
+                $stderr = $result["compile"]["stderr"] . "\n" . $stderr;
             }
-            $compile_stderr = $result["compile"]["stderr"] ?? "";
-            if (!empty($compile_stderr) && empty($stderr)) {
-                $stderr = $compile_stderr;
+            if (
+                isset($result["compile"]["stdout"]) &&
+                !empty($result["compile"]["stdout"])
+            ) {
+                $output = $result["compile"]["stdout"] . "\n" . $output;
             }
+
+            if ($exit_code !== 0 && empty($output) && !empty($stderr)) {
+                $output = $stderr;
+                $stderr = "";
+            }
+
             return [
                 "success" => true,
                 "output" => $output,
                 "stderr" => $stderr,
+                "exit_code" => $exit_code,
                 "execution_time" => ($result["run"]["time"] ?? "0") . "s",
             ];
         }
@@ -364,6 +407,50 @@ function execute_with_piston($code, $lang)
             ($error ?: "Unknown error"),
         "execution_time" => "0ms",
     ];
+}
+
+function execute_with_piston_v1($code, $lang)
+{
+    $map = [
+        "rust" => "rust",
+        "python" => "python",
+        "javascript" => "javascript",
+        "typescript" => "typescript",
+        "go" => "go",
+        "java" => "java",
+        "cpp" => "cpp",
+        "c" => "c",
+    ];
+    $piston_lang = $map[$lang["slug"]] ?? "rust";
+
+    $payload = json_encode([
+        "language" => $piston_lang,
+        "source" => $code,
+    ]);
+
+    $ch = curl_init("https://emkc.org/api/v1/piston/execute");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($response && $http_code === 200) {
+        $result = json_decode($response, true);
+        if ($result && isset($result["output"])) {
+            return [
+                "success" => true,
+                "output" => $result["output"] ?? "",
+                "stderr" => $result["stderr"] ?? "",
+                "exit_code" => $result["exitCode"] ?? 0,
+                "execution_time" => "Piston v1",
+            ];
+        }
+    }
+    return ["success" => false];
 }
 
 function simulate_execution($code, $lesson_id, $lang)

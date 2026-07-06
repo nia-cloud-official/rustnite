@@ -1,51 +1,9 @@
 <?php
 $page_title = "Create Account";
-
-$errors = [];
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $username = sanitize($_POST["username"] ?? "");
-    $email = sanitize($_POST["email"] ?? "");
-    $password = $_POST["password"] ?? "";
-    $confirm = $_POST["confirm_password"] ?? "";
-
-    if (strlen($username) < 3) {
-        $errors[] = "Username must be at least 3 characters";
-    }
-    if (!preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
-        $errors[] = "Username: letters, numbers, underscores only";
-    }
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = "Valid email required";
-    }
-    if (strlen($password) < 6) {
-        $errors[] = "Password must be 6+ characters";
-    }
-    if ($password !== $confirm) {
-        $errors[] = "Passwords don't match";
-    }
-
-    if (empty($errors)) {
-        $stmt = $pdo->prepare(
-            "SELECT id FROM users WHERE username = ? OR email = ?",
-        );
-        $stmt->execute([$username, $email]);
-        if ($stmt->fetch()) {
-            $errors[] = "Username or email already exists";
-        } else {
-            $hashed = password_hash($password, HASH_ALGO);
-            $stmt = $pdo->prepare(
-                "INSERT INTO users (username, email, password, xp, level) VALUES (?, ?, ?, 0, 1)",
-            );
-            $stmt->execute([$username, $email, $hashed]);
-            $_SESSION["user_id"] = $pdo->lastInsertId();
-            $_SESSION["username"] = $username;
-            update_user_activity($_SESSION["user_id"]);
-            header("Location: index.php?page=dashboard");
-            exit();
-        }
-    }
-}
-
+$errors = isset($_SESSION["register_errors"])
+    ? $_SESSION["register_errors"]
+    : [];
+unset($_SESSION["register_errors"]);
 $languages = get_languages();
 ?>
 <div style="display:flex; align-items:center; justify-content:center; min-height:80vh; animation: fade-in 0.5s ease-out;">

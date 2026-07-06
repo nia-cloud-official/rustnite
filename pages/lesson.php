@@ -4,7 +4,9 @@ $lesson_id = (int) ($_GET["id"] ?? 0);
 
 $lesson = get_lesson_by_id($lesson_id);
 
-$lesson_lang = strtolower($lesson["language_slug"] ?? "rust");
+$lesson_lang = strtolower(
+    $lesson["language_slug"] ?? ($lesson["slug"] ?? "rust"),
+);
 
 // Always ensure lesson content matches the correct language
 $title_parts = explode(": ", $lesson["title"] ?? "");

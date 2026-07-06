@@ -1,4 +1,5 @@
 <?php
+ob_start();
 session_start();
 require_once "config.php";
 require_once "includes/db.php";
@@ -166,7 +167,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $username = sanitize($_POST["username"]);
                 $password = $_POST["password"];
 
-                if (!empty($username) && !empty($password)) {
+                if (empty($username) || empty($password)) {
+                    $_SESSION["login_error"] = "Please fill in all fields";
+                } else {
                     $stmt = $pdo->prepare(
                         "SELECT * FROM users WHERE username = ? OR email = ?",
                     );
@@ -180,19 +183,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         $_SESSION["user_id"] = $user["id"];
                         $_SESSION["username"] = $user["username"];
 
-                        // Update online status
                         try {
                             $stmt = $pdo->prepare(
                                 "UPDATE users SET is_online = TRUE WHERE id = ?",
                             );
                             $stmt->execute([$user["id"]]);
                         } catch (PDOException $e) {
-                            // Column may not exist yet
                         }
 
                         $redirect = $_GET["redirect"] ?? "dashboard";
                         header("Location: index.php?page={$redirect}");
                         exit();
+                    } else {
+                        $_SESSION["login_error"] =
+                            "Invalid username or password";
                     }
                 }
             }
@@ -273,6 +277,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         header("Location: index.php?page=dashboard");
                         exit();
                     }
+                }
+
+                // Store errors in session so register.php can display them
+                if (!empty($errors)) {
+                    $_SESSION["register_errors"] = $errors;
                 }
             }
             break;
@@ -468,3 +477,5 @@ if (file_exists("pages/{$page}.php")) {
 }
 
 include "includes/footer.php";
+
+ob_end_flush();

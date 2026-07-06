@@ -63,6 +63,7 @@ A multi-language battle-royale coding arena inspired by Twitch. Learn, compete, 
 | Editor | Monaco Editor |
 | AI | OpenCode Big Pickle (`big-pickle`) |
 | Auth | Email/Password, GitHub OAuth |
+| Code Execution | Piston API (emkc.org) |
 | Hosting | Wasmer Edge |
 
 ---
@@ -104,6 +105,11 @@ Rustnite uses the OpenCode Zen API (`https://opencode.ai/zen/v1/chat/completions
 - Dynamic lesson content generation
 - Coding exercise and daily challenge generation
 - Mini-game creation
+
+### GitHub OAuth
+
+Create a GitHub OAuth App at https://github.com/settings/developers
+- Callback URL: `https://rustnite.wasmer.app/index.php?page=login&github_callback=1`
 
 ---
 

@@ -114,9 +114,8 @@ define(
     APP_URL . "/index.php?page=login&github_callback=1",
 );
 
-// Error reporting
-// Only enable display_errors if not already suppressed (e.g. by api/execute.php)
-if (ini_get("display_errors") !== "0") {
-    error_reporting(E_ALL);
-    ini_set("display_errors", 1);
-}
+// Error reporting - log errors but don't display them by default
+// API endpoints (api/execute.php) may override this
+error_reporting(E_ALL);
+ini_set("display_errors", 0);
+ini_set("log_errors", 1);

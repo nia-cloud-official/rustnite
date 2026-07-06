@@ -2,18 +2,20 @@
 $page_title = "Notifications";
 $user = get_user_by_id($_SESSION["user_id"]);
 
-// Handle mark all read
 if (isset($_POST["mark_all_read"])) {
-    $stmt = $pdo->prepare("UPDATE notifications SET read_at = NOW() WHERE user_id = ? AND read_at IS NULL");
+    $stmt = $pdo->prepare(
+        "UPDATE notifications SET read_at = NOW() WHERE user_id = ? AND read_at IS NULL",
+    );
     $stmt->execute([$_SESSION["user_id"]]);
-    header("Location: index.php?page=notifications");
+    $redirect_url = "index.php?page=notifications";
+    echo "<script>window.location.href='$redirect_url';</script>";
     exit();
 }
 
-// Handle mark single read
 if (isset($_GET["mark_read"])) {
     mark_notification_read((int) $_GET["mark_read"], $_SESSION["user_id"]);
-    header("Location: index.php?page=notifications");
+    $redirect_url = "index.php?page=notifications";
+    echo "<script>window.location.href='$redirect_url';</script>";
     exit();
 }
 
@@ -42,6 +44,7 @@ $unread_count = get_unread_notification_count($_SESSION["user_id"]);
     <?php if (!empty($notifications)): ?>
         <div class="space-y-2">
             <?php foreach ($notifications as $notif):
+
                 $icons = [
                     "badge_earned" => "fa-award",
                     "level_up" => "fa-arrow-up",
@@ -54,30 +57,41 @@ $unread_count = get_unread_notification_count($_SESSION["user_id"]);
                 ];
                 $icon = $icons[$notif["type"]] ?? "fa-bell";
                 $is_unread = $notif["read_at"] === null;
-            ?>
-                <div class="tw-card tw-card-body" style="<?= $is_unread ? "border-left:3px solid #9147FF;" : "" ?>">
+                ?>
+                <div class="tw-card tw-card-body" style="<?= $is_unread
+                    ? "border-left:3px solid #9147FF;"
+                    : "" ?>">
                     <div class="flex items-start gap-3">
                         <div style="width:36px; height:36px; border-radius:50%; background:rgba(145,71,255,0.1); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                             <i class="fas <?= $icon ?>" style="color:#9147FF; font-size:14px;"></i>
                         </div>
                         <div style="flex:1;">
                             <div class="flex items-center gap-2 mb-1">
-                                <span class="font-bold text-sm"><?= htmlspecialchars($notif["title"]) ?></span>
+                                <span class="font-bold text-sm"><?= htmlspecialchars(
+                                    $notif["title"],
+                                ) ?></span>
                                 <?php if ($is_unread): ?>
                                     <span class="live-dot"></span>
                                 <?php endif; ?>
                             </div>
-                            <p class="text-sm text-twitch-muted mb-1"><?= htmlspecialchars($notif["message"]) ?></p>
+                            <p class="text-sm text-twitch-muted mb-1"><?= htmlspecialchars(
+                                $notif["message"],
+                            ) ?></p>
                             <div class="flex items-center gap-3 text-xs text-twitch-muted">
-                                <span><?= time_ago($notif["created_at"]) ?></span>
+                                <span><?= time_ago(
+                                    $notif["created_at"],
+                                ) ?></span>
                                 <?php if ($is_unread): ?>
-                                    <a href="?page=notifications&mark_read=<?= $notif["id"] ?>" class="text-twitch-purple">Mark read</a>
+                                    <a href="?page=notifications&mark_read=<?= $notif[
+                                        "id"
+                                    ] ?>" class="text-twitch-purple">Mark read</a>
                                 <?php endif; ?>
                             </div>
                         </div>
                     </div>
                 </div>
-            <?php endforeach; ?>
+            <?php
+            endforeach; ?>
         </div>
     <?php else: ?>
         <div class="tw-card tw-card-body" style="text-align:center; padding:80px 20px;">

@@ -150,6 +150,10 @@ function get_language_by_id($id)
 function get_language_by_slug($slug)
 {
     global $pdo;
+    // Handle case where slug is passed as array (e.g., from malformed routes)
+    if (is_array($slug)) {
+        $slug = reset($slug);
+    }
     $stmt = $pdo->prepare("SELECT * FROM languages WHERE slug = ?");
     $stmt->execute([$slug]);
     return $stmt->fetch();
@@ -179,6 +183,7 @@ function get_user_progress($user_id, $language_id = null)
         $stmt->execute($params);
         return $stmt->fetchAll();
     } catch (PDOException $e) {
+        // Fallback without language_id filter and order_num
         $sql = "
             SELECT l.*, up.completed, up.completed_at
             FROM lessons l
@@ -189,7 +194,7 @@ function get_user_progress($user_id, $language_id = null)
             $sql .= " WHERE l.language_id = ?";
             $params[] = $language_id;
         }
-        $sql .= " ORDER BY l.order_num";
+        $sql .= " ORDER BY l.id";
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll();
@@ -826,7 +831,7 @@ function call_opencode_api($context, $language)
         "Content-Type: application/json",
         "Authorization: Bearer " . OPENCODE_API_KEY,
     ]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 120);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
 
     $response = curl_exec($ch);
@@ -834,27 +839,45 @@ function call_opencode_api($context, $language)
     $error = curl_error($ch);
     curl_close($ch);
 
-    if ($response && $http_code === 200) {
-        $result = json_decode($response, true);
-        // OpenAI-compatible format
-        if (isset($result["choices"][0]["message"]["content"])) {
-            return $result["choices"][0]["message"]["content"];
-        }
-        // OpenCode API format
-        if (isset($result["data"]) && !empty($result["data"])) {
-            return $result["data"];
-        }
-        // Simple response format
-        if (isset($result["response"])) {
-            return $result["response"];
-        }
-        // Content field directly
-        if (isset($result["content"])) {
-            return $result["content"];
-        }
+    if (!$response || $http_code !== 200) {
+        error_log(
+            "OpenCode API error: HTTP $http_code - " .
+                ($error ?: "No response"),
+        );
+        return null;
     }
 
-    return null; // Fallback to built-in
+    $result = json_decode($response, true);
+    if (!$result) {
+        error_log("OpenCode API: Invalid JSON response");
+        return null;
+    }
+
+    // OpenAI-compatible format
+    if (isset($result["choices"][0]["message"]["content"])) {
+        return $result["choices"][0]["message"]["content"];
+    }
+    // OpenAI text format (older API)
+    if (isset($result["choices"][0]["text"])) {
+        return $result["choices"][0]["text"];
+    }
+    // OpenCode API format
+    if (isset($result["data"]) && !empty($result["data"])) {
+        return $result["data"];
+    }
+    // Simple response format
+    if (isset($result["response"])) {
+        return $result["response"];
+    }
+    // Content field directly
+    if (isset($result["content"])) {
+        return $result["content"];
+    }
+
+    error_log(
+        "OpenCode API: Unknown response format - " . substr($response, 0, 200),
+    );
+    return null;
 }
 
 function generate_fallback_response($context, $language)
@@ -1764,6 +1787,7 @@ function get_daily_challenge($date = null)
         FROM daily_challenges dc
         JOIN languages lang ON dc.language_id = lang.id
         WHERE dc.date = ? AND dc.is_active = TRUE
+        LIMIT 1
     ");
     $stmt->execute([$date]);
     return $stmt->fetch();
@@ -2230,7 +2254,19 @@ function generate_ai_lesson(
     $selected_topic = $topic ?: $topics[array_rand($topics)];
 
     // Generate complete lesson content
-    $content = build_lesson_content($lang, $difficulty, $selected_topic);
+    try {
+        $content = build_lesson_content($lang, $difficulty, $selected_topic);
+    } catch (Exception $e) {
+        error_log(
+            "Failed to build lesson content for {$lang["slug"]}: " .
+                $e->getMessage(),
+        );
+        return [
+            "action" => "failed",
+            "error" => "Could not generate lesson content",
+            "title" => $lang["name"] . ": " . $selected_topic,
+        ];
+    }
 
     // Check if lesson already exists (avoid duplicates)
     $stmt = $pdo->prepare(
@@ -3714,9 +3750,16 @@ function ensure_lessons_exist($language_id, $count = 5)
 
     for ($i = 0; $i < $needed; $i++) {
         $diff = $difficulties[$i % 3];
-        $result = generate_ai_lesson($language_id, $diff);
-        if (!isset($result["error"])) {
-            $created[] = $result;
+        try {
+            $result = generate_ai_lesson($language_id, $diff);
+            if (!isset($result["error"])) {
+                $created[] = $result;
+            }
+        } catch (Exception $e) {
+            error_log(
+                "ensure_lessons_exist: Failed to generate lesson: " .
+                    $e->getMessage(),
+            );
         }
     }
 
@@ -3904,7 +3947,7 @@ function render_markdown($text)
 
     // Restore code blocks
     foreach ($code_blocks as $placeholder => $html) {
-        $text = str_replace(htmlspecialchars($placeholder), $html, $text);
+        $text = str_replace($placeholder, $html, $text);
     }
 
     return $text;

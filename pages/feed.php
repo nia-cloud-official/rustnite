@@ -1,63 +1,5 @@
 <?php
 $page_title = "Feed";
-
-// Handle like/unlike actions
-if (isset($_GET["like"]) && is_numeric($_GET["like"])) {
-    $post_id = (int) $_GET["like"];
-    try {
-        $stmt = $pdo->prepare(
-            "SELECT id FROM feed_likes WHERE post_id = ? AND user_id = ?",
-        );
-        $stmt->execute([$post_id, $_SESSION["user_id"]]);
-        if (!$stmt->fetch()) {
-            $stmt = $pdo->prepare(
-                "INSERT INTO feed_likes (post_id, user_id) VALUES (?, ?)",
-            );
-            $stmt->execute([$post_id, $_SESSION["user_id"]]);
-            $stmt = $pdo->prepare(
-                "UPDATE feed_posts SET likes_count = likes_count + 1 WHERE id = ?",
-            );
-            $stmt->execute([$post_id]);
-        }
-    } catch (PDOException $e) {
-    }
-    header("Location: index.php?page=feed");
-    exit();
-}
-
-if (isset($_GET["unlike"]) && is_numeric($_GET["unlike"])) {
-    $post_id = (int) $_GET["unlike"];
-    try {
-        $stmt = $pdo->prepare(
-            "DELETE FROM feed_likes WHERE post_id = ? AND user_id = ?",
-        );
-        $stmt->execute([$post_id, $_SESSION["user_id"]]);
-        $stmt = $pdo->prepare(
-            "UPDATE feed_posts SET likes_count = GREATEST(likes_count - 1, 0) WHERE id = ?",
-        );
-        $stmt->execute([$post_id]);
-    } catch (PDOException $e) {
-    }
-    header("Location: index.php?page=feed");
-    exit();
-}
-
-// Handle comment submission
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_comment"])) {
-    $post_id = (int) ($_POST["post_id"] ?? 0);
-    $comment_content = sanitize($_POST["comment_content"] ?? "");
-    if ($post_id > 0 && !empty($comment_content)) {
-        try {
-            $stmt = $pdo->prepare("INSERT INTO feed_comments (post_id, user_id, content) VALUES (?, ?, ?)");
-            $stmt->execute([$post_id, $_SESSION["user_id"], $comment_content]);
-            $stmt = $pdo->prepare("UPDATE feed_posts SET comments_count = comments_count + 1 WHERE id = ?");
-            $stmt->execute([$post_id]);
-        } catch (PDOException $e) {}
-        header("Location: index.php?page=feed&view=" . $post_id);
-        exit();
-    }
-}
-
 $user = get_user_by_id($_SESSION["user_id"]);
 $languages = get_languages();
 
@@ -172,6 +114,8 @@ $post_types = [
                 <div style="background:rgba(233,25,123,0.1); border:1px solid rgba(233,25,123,0.2); border-radius:8px; padding:12px; margin-bottom:16px;">
                     <span style="color:#E9197B; font-size:13px;"><?= htmlspecialchars(
                         $post_error,
+                        ENT_NOQUOTES,
+                        "UTF-8",
                     ) ?></span>
                 </div>
             <?php endif; ?>
@@ -179,6 +123,8 @@ $post_types = [
                 <div style="background:rgba(0,217,90,0.1); border:1px solid rgba(0,217,90,0.2); border-radius:8px; padding:12px; margin-bottom:16px;">
                     <span style="color:#00D95A; font-size:13px;"><?= htmlspecialchars(
                         $post_success,
+                        ENT_NOQUOTES,
+                        "UTF-8",
                     ) ?></span>
                 </div>
             <?php endif; ?>
@@ -258,7 +204,11 @@ $type
                 $post["comments_count"],
                 $post["comments_count_real"],
             );
-            $post_content = htmlspecialchars($post["content"], ENT_NOQUOTES, "UTF-8");
+            $post_content = htmlspecialchars(
+                $post["content"],
+                ENT_NOQUOTES,
+                "UTF-8",
+            );
             $post_content = preg_replace(
                 "/\b(https?:\/\/\S+)\b/",
                 '<a href="$1" target="_blank" style="color:#9147FF;">$1</a>',
@@ -285,6 +235,8 @@ $type
                             <div class="flex items-center gap-2">
                                 <span class="font-bold text-sm"><?= htmlspecialchars(
                                     $post["username"],
+                                    ENT_NOQUOTES,
+                                    "UTF-8",
                                 ) ?></span>
                                 <span class="lang-pill" style="background:<?= $type_info[
                                     "color"
@@ -305,6 +257,8 @@ $type
                     <?php if ($post["title"]): ?>
                         <h3 class="font-bold text-lg mb-2"><?= htmlspecialchars(
                             $post["title"],
+                            ENT_NOQUOTES,
+                            "UTF-8",
                         ) ?></h3>
                     <?php endif; ?>
 
@@ -313,6 +267,8 @@ $type
                     <?php if ($post["code_snippet"]): ?>
                         <pre style="background:#0E0E10; border:1px solid #2D2D35; border-radius:8px; padding:12px; overflow-x:auto; margin-bottom:12px;"><code style="font-size:12px; color:#ADADB8;"><?= htmlspecialchars(
                             $post["code_snippet"],
+                            ENT_NOQUOTES,
+                            "UTF-8",
                         ) ?></code></pre>
                     <?php endif; ?>
 
@@ -323,7 +279,11 @@ $type
                                 as $tag
                             ): ?>
                                 <span style="background:rgba(145,71,255,0.1); color:#A970FF; padding:2px 8px; border-radius:4px; font-size:11px;">#<?= trim(
-                                    htmlspecialchars($tag),
+                                    htmlspecialchars(
+                                        $tag,
+                                        ENT_NOQUOTES,
+                                        "UTF-8",
+                                    ),
                                 ) ?></span>
                             <?php endforeach; ?>
                         </div>
@@ -379,6 +339,8 @@ $type
                                             <div class="flex items-center gap-2">
                                                 <span class="font-bold text-xs"><?= htmlspecialchars(
                                                     $comment["username"],
+                                                    ENT_NOQUOTES,
+                                                    "UTF-8",
                                                 ) ?></span>
                                                 <span class="text-xs text-twitch-muted"><?= time_ago(
                                                     $comment["created_at"],
@@ -386,6 +348,8 @@ $type
                                             </div>
                                             <p class="text-sm text-twitch-muted mt-1"><?= htmlspecialchars(
                                                 $comment["content"],
+                                                ENT_NOQUOTES,
+                                                "UTF-8",
                                             ) ?></p>
                                         </div>
                                     </div>
