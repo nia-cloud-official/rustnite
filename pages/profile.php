@@ -15,21 +15,19 @@ $message_type = "";
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["update_profile"])) {
     $bio = sanitize($_POST["bio"] ?? "");
     $github = sanitize($_POST["github_username"] ?? "");
-    $twitter = sanitize($_POST["twitter_username"] ?? "");
     $website = sanitize($_POST["website"] ?? "");
     $location = sanitize($_POST["location"] ?? "");
     $public = isset($_POST["public_profile"]) ? 1 : 0;
     $preferred_lang = (int) ($_POST["preferred_language"] ?? 1);
 
     $stmt = $pdo->prepare(
-        "UPDATE users SET bio=?, github_username=?, twitter_username=?, website=?, location=?, public_profile=?, preferred_language=? WHERE id=?",
+        "UPDATE users SET bio=?, github_username=?, website=?, location=?, public_profile=?, preferred_language=? WHERE id=?",
     );
 
     if (
         $stmt->execute([
             $bio,
             $github,
-            $twitter,
             $website,
             $location,
             $public,
@@ -98,7 +96,7 @@ foreach ($languages as $lang) {
                         <span><i class="fas fa-ranking-star" style="color:#FFD700;"></i> Rank #<?= $rank ?></span>
                         <span><i class="fas fa-fire" style="color:#FF6B35;"></i> <?= $user[
                             "current_streak"
-                        ] ?> day streak</span>
+                        ] ?? 0 ?> day streak</span>
                     </div>
                     <?php if ($user["bio"]): ?>
                         <p class="text-sm text-twitch-text mt-3"><?= htmlspecialchars(
@@ -148,7 +146,7 @@ foreach ($languages as $lang) {
                         <div style="text-align:center;">
                             <div class="text-2xl font-black" style="color:#00D95A;"><?= $user[
                                 "longest_streak"
-                            ] ?></div>
+                            ] ?? 0 ?></div>
                             <div class="text-xs text-twitch-muted">Best Streak</div>
                         </div>
                         <div style="text-align:center;">
@@ -324,39 +322,40 @@ foreach ($languages as $lang) {
                         LIMIT 10
                     ");
                     $stmt->execute([$_SESSION["user_id"]]);
-                    $completions = $stmt->fetchAll();
-                    ?>
+                    $recent = $stmt->fetchAll();
 
-                    <?php if (!empty($completions)): ?>
-                        <div class="space-y-2">
-                            <?php foreach ($completions as $c): ?>
-                                <div class="flex items-center gap-3 p-3 rounded-lg hover:bg-twitch-medium transition-all">
-                                    <i class="<?= $c[
-                                        "lang_icon"
-                                    ] ?>" style="color:<?= $c[
-    "lang_color"
-] ?>; width:20px; text-align:center;"></i>
+                    if (!empty($recent)): ?>
+                        <div class="space-y-3">
+                            <?php foreach ($recent as $r): ?>
+                                <div class="flex items-center gap-3">
+                                    <div style="width:32px; height:32px; border-radius:8px; background:rgba(0,217,90,0.15); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                        <i class="fas fa-check" style="color:#00D95A; font-size:12px;"></i>
+                                    </div>
                                     <div style="flex:1;">
                                         <div class="text-sm font-medium"><?= htmlspecialchars(
-                                            $c["title"],
+                                            $r["title"],
                                         ) ?></div>
-                                        <div class="text-xs text-twitch-muted"><?= $c[
-                                            "lang_name"
-                                        ] ?> · <?= time_ago(
-     $c["completed_at"],
- ) ?></div>
+                                        <div class="text-xs text-twitch-muted">
+                                            <i class="<?= $r[
+                                                "lang_icon"
+                                            ] ?>" style="color:<?= $r[
+    "lang_color"
+] ?>;"></i>
+                                            <?= $r["lang_name"] ?> · +<?= $r[
+     "xp_reward"
+ ] ?> XP · <?= time_ago($r["completed_at"]) ?>
+                                        </div>
                                     </div>
-                                    <span style="color:#A970FF; font-size:12px; font-weight:600;">+<?= $c[
-                                        "xp_reward"
-                                    ] ?> XP</span>
                                 </div>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>
-                        <div style="text-align:center; padding:12px; color:#ADADB8;">
-                            No lessons completed yet. Start learning!
+                        <div style="text-align:center; padding:20px;">
+                            <i class="fas fa-book-open" style="font-size:32px; color:#2D2D35; margin-bottom:8px;"></i>
+                            <p class="text-sm text-twitch-muted">Complete lessons to see your progress here!</p>
                         </div>
-                    <?php endif; ?>
+                    <?php endif;
+                    ?>
                 </div>
             </div>
         </div>

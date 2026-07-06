@@ -865,10 +865,6 @@
 </head>
 <body>
 
-<!-- Scan Line Overlay -->
-<div class="scan-line-overlay"></div>
-
-
 
 <?php if (!($hide_chrome ?? false)): ?>
 <!-- Toast Notification Container -->
