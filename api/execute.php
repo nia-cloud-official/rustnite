@@ -8,13 +8,35 @@ header("Access-Control-Allow-Headers: Content-Type");
 // Start output buffering to catch stray PHP warnings/errors
 ob_start();
 
-// Suppress HTML error output — this is a JSON API
-ini_set("display_errors", 0);
+// Register shutdown handler to catch fatal errors as JSON
+register_shutdown_function(function () {
+    $error = error_get_last();
+    if (
+        $error &&
+        in_array($error["type"], [
+            E_ERROR,
+            E_PARSE,
+            E_CORE_ERROR,
+            E_COMPILE_ERROR,
+        ])
+    ) {
+        ob_clean();
+        echo json_encode([
+            "success" => false,
+            "output" => "",
+            "stderr" => "Internal error: " . $error["message"],
+        ]);
+    }
+});
+
 error_reporting(E_ALL);
 
 require_once "../config.php";
 require_once "../includes/db.php";
 require_once "../includes/functions.php";
+
+// config.php sets display_errors=1, but we're a JSON API — override it now
+ini_set("display_errors", 0);
 
 // Discard any buffered output (warnings, stray whitespace) — only send JSON
 ob_clean();

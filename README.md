@@ -1,211 +1,194 @@
-# ⚡ Rustnite — Battle-Royale Coding Arena
+# Rustnite
 
-> A Twitch-inspired, multi-language coding arena where you level up by solving challenges, competing in battle royales, and learning with an AI tutor — all powered by **Big Pickle** 🤖
-
-![Rustnite Banner](assets/rustnite-banner.png)
+A modern coding platform inspired by competitive gaming, where developers improve their skills through interactive lessons, coding challenges, multiplayer competitions, and AI-assisted learning.
 
 ---
 
-## 🚀 Features
+## Overview
 
-### 🎮 Twitch-Inspired Arena
-- **Live sidebar UI** — dark theme, streamer-style layout, real-time notifications
-- **Animations everywhere** — confetti, progress rings, smooth transitions
-- **Glowing gradients & neon accents** — that premium gaming feel
-- **Mobile-first responsive** — collapsible sidebar, touch friendly
-
-### 🧠 AI-Powered Everything (Big Pickle)
-- **AI Tutor** — ask anything, get real answers (no canned responses)
-- **Auto-generated lessons** — lessons are created on-the-fly by the AI when none exist
-- **Auto-generated mini-games** — 4 game types created dynamically: Code Rush, Bug Squasher, Syntax Sprint, Pattern Match
-- **Daily challenges** — automatically generated every day
-- **Feed posts & content** — AI-assisted community engagement
-
-### 🌐 Multi-Language Support
-| # | Language | Icon |
-|---|----------|------|
-| 1 | Rust | `🦀` |
-| 2 | Python | `🐍` |
-| 3 | JavaScript | `🟨` |
-| 4 | TypeScript | `🔷` |
-| 5 | Go | `🔵` |
-| 6 | Java | `☕` |
-| 7 | C++ | `⚙️` |
-| 8 | C | `⚡` |
-
-### ⚔️ Battle Royale Systems
-- Real-time coding battles with up to 50 players
-- XP rewards for wins & participation
-- Leaderboards per language
-- Elimination-style competition rounds
-
-### 🎯 Gamification
-- **XP & Leveling** — earn XP from lessons, challenges, battles, mini-games
-- **Streaks** — daily login streaks with bonus rewards
-- **Badges** — 30+ achievements to unlock
-- **Leaderboards** — global & per-language rankings
-- **Daily Challenges** — unique challenges refreshed every 24h
-
-### 🕹️ Playable Mini-Games
-| Game | Description |
-|------|-------------|
-| 🏃 Code Rush | Race to write correct code under time pressure |
-| 🐛 Bug Squasher | Find and fix bugs in code snippets |
-| ⚡ Syntax Sprint | Quickly identify syntax errors |
-| 🧩 Pattern Match | Match code patterns to descriptions |
-
-### 👥 Social Features
-- **Feed page** — post ideas, blogs, questions, share code
-- **User profiles** — customizable with XP, level, badges, streak
-- **Follow system** — follow other developers
-- **Notifications** — real-time in-app notifications with dropdown
-- **Code sharing** — share solutions with the community
-
-### 🔐 Authentication
-- **Email/Password** — standard registration & login
-- **GitHub OAuth** — one-click login with GitHub
-
-### ⚙️ Real Developer Tools
-- **Real code execution** — actual compilation & runtime (not simulated)
-- **Monaco Editor** — professional code editing (VS Code inside the browser)
-- **Syntax highlighting** — per-language theming
-- **Formatting & linting** — integrated where available
+Rustnite combines structured learning, competitive programming, and AI-powered assistance into a single platform. Users earn experience, unlock achievements, compete against other developers, and practice across multiple programming languages.
 
 ---
 
-## 🏗️ Tech Stack
+## Features
+
+### Coding Arena
+
+- Competitive coding challenges
+- Multiplayer battle royale matches
+- Language-specific leaderboards
+- Experience and progression system
+
+### AI Learning
+
+- AI-powered coding tutor
+- Dynamic lesson generation
+- AI-generated coding challenges
+- AI-generated mini-games
+
+### Supported Languages
+
+- Rust
+- Python
+- JavaScript
+- TypeScript
+- Go
+- Java
+- C++
+- C
+
+### Gamification
+
+- XP and leveling
+- Achievement system
+- Daily challenges
+- Login streaks
+- Global and language-specific leaderboards
+
+### Mini Games
+
+- Code Rush
+- Bug Squasher
+- Syntax Sprint
+- Pattern Match
+
+### Community
+
+- User profiles
+- Developer feed
+- Code sharing
+- Follow system
+- Real-time notifications
+
+### Developer Experience
+
+- Monaco Editor integration
+- Real code execution
+- Syntax highlighting
+- Code formatting and linting
+- GitHub OAuth authentication
+
+---
+
+## Technology Stack
 
 | Layer | Technology |
-|-------|-----------|
-| **Backend** | PHP 8+ (no framework) |
-| **Database** | MariaDB / MySQL |
-| **Frontend** | Tailwind CSS + Font Awesome |
-| **Editor** | Monaco Editor (VS Code) |
-| **AI** | OpenCode Big Pickle (`big-pickle` model) |
-| **Code Execution** | Real compilers (Rustc, Python3, Node, GCC, G++, Javac, Go) |
-| **Auth** | GitHub OAuth + native sessions |
-| **Hosting** | Wasmer Edge |
+|--------|------------|
+| Backend | PHP 8+ |
+| Database | MariaDB / MySQL |
+| Frontend | Tailwind CSS |
+| Editor | Monaco Editor |
+| AI | OpenCode Big Pickle |
+| Authentication | Email/Password, GitHub OAuth |
+| Hosting | Wasmer Edge |
 
 ---
 
-## 🔧 Quick Start
+## Getting Started
 
-### Prerequisites
-- PHP 8.0+ with PDO MySQL & cURL extensions
-- MariaDB 10.3+ or MySQL 5.7+
-- Web server (Apache / Nginx)
-- Compilers/tools for languages you want to support (optional, code falls back to simulation if not available)
+### Requirements
 
-### Setup
+- PHP 8.0+
+- MariaDB or MySQL
+- Apache or Nginx
+- cURL extension
+- PDO MySQL extension
 
-1. **Clone the repo**
-   ```bash
-   git clone https://github.com/nia-cloud-official/rustnite.git
-   cd rustnite
-   ```
+### Installation
 
-2. **Configure database & app**
-   ```php
-   // config.php — set your database credentials
-   define('DB_HOST', 'your_host');
-   define('DB_NAME', 'rustnite');
-   define('DB_USER', 'your_user');
-   define('DB_PASS', 'your_password');
-   ```
+Clone the repository.
 
-3. **Set your OpenCode API key** (get one at [opencode.ai](https://opencode.ai))
-   ```php
-   // config.php
-   define('OPENCODE_API_KEY', 'sk-your-key-here');
-   ```
+```bash
+git clone https://github.com/nia-cloud-official/rustnite.git
+cd rustnite
+```
 
-4. **(Optional) Set up GitHub OAuth**
-   - Create an OAuth App at https://github.com/settings/developers
-   - Set callback URL to `https://yourdomain.com/index.php?page=login&github_callback=1`
-   - Fill in `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in `config.php`
+Configure your database credentials in `config.php`.
 
-5. **Point your web server** to the project directory — the schema auto-migrates on first load.
+```php
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'rustnite');
+define('DB_USER', 'username');
+define('DB_PASS', 'password');
+```
 
----
+Configure your OpenCode API key.
 
-## 🤖 AI Tutor
+```php
+define('OPENCODE_API_KEY', 'your-api-key');
+```
 
-The **Big Pickle AI Tutor** is available on every page. Ask it anything:
+(Optional) Configure GitHub OAuth credentials.
 
-- "Explain closures in Rust"
-- "Debug this Python function"
-- "Generate a React component"
-- "What's the difference between C and Go?"
-
-It uses the **OpenCode Zen API** (`https://opencode.ai/zen/v1/chat/completions`) with the `big-pickle` model — no canned responses, real AI answers.
+Start your web server and open the application in your browser.
 
 ---
 
-## 📊 Database
+## AI Integration
 
-The schema auto-migrates via `includes/db.php`. Core tables:
+Rustnite integrates the OpenCode Zen API using the **Big Pickle** model to provide:
 
-| Table | Purpose |
-|-------|---------|
-| `users` | Accounts, XP, level, streak |
-| `lessons` | Coding lessons (auto-generated) |
-| `user_progress` | Per-lesson completion tracking |
-| `mini_games` | Game configs & leader data |
-| `mini_game_scores` | High scores per user |
-| `daily_challenges` | Auto-generated daily challenges |
-| `notifications` | In-app notification queue |
-| `feed_posts` | Community feed (blogs, questions, ideas) |
-| `badges` / `user_badges` | Achievement system |
-| `battle_royale_*` | Battle royale matches & participants |
+- AI tutoring
+- Lesson generation
+- Challenge generation
+- Mini-game generation
+- Context-aware coding assistance
 
 ---
 
-## 🌟 Roadmap
+## Database
 
-- [ ] **Live coding battles** — real-time multiplayer with WebSockets
-- [ ] **Team arenas** — squad-based coding competitions
-- [ ] **Custom avatars & cosmetics** — earned through play
-- [ ] **Tournament mode** — bracket-style coding championships
-- [ ] **Video tutorials** — integrated learning media
-- [ ] **Mobile app** — native iOS / Android
+Core tables include:
 
----
+- users
+- lessons
+- user_progress
+- mini_games
+- mini_game_scores
+- daily_challenges
+- notifications
+- feed_posts
+- badges
+- battle_royale tables
 
-## 🤝 Contributing
-
-PRs welcome! Keep the Twitch vibe alive, make the animations pop, and never hardcode anything the AI can generate.
-
-1. Fork the repo
-2. Create a feature branch (`git checkout -b feature/cool-stuff`)
-3. Commit your changes (`git commit -m "Add cool stuff"`)
-4. Push (`git push origin feature/cool-stuff`)
-5. Open a Pull Request
+Database migrations are handled automatically during application startup.
 
 ---
 
-## 📄 License
+## Roadmap
 
-MIT — see [LICENSE](LICENSE).
-
----
-
-## 🙏 Acknowledgments
-
-- **OpenCode** — for Big Pickle, the AI that makes this platform actually smart
-- **Twitch** — for the UI/UX inspiration
-- **Monaco Editor** — Microsoft's incredible code editor
-- **Tailwind CSS** — utility-first CSS done right
-- **Font Awesome** — the icons that tie it all together
-- **You** — for coding, competing, and leveling up 🚀
+- Real-time multiplayer battles
+- Team competitions
+- Tournament mode
+- Custom avatars
+- Mobile applications
+- Additional programming languages
 
 ---
 
-<div align="center">
+## Contributing
 
-**Built with ⚡ and 🤖 — never stop shipping**
+Contributions are welcome.
 
-[🌟 Star on GitHub](https://github.com/nia-cloud-official/rustnite) •
-[🐛 Report Bug](https://github.com/nia-cloud-official/rustnite/issues) •
-[💡 Request Feature](https://github.com/nia-cloud-official/rustnite/discussions)
+1. Fork the repository.
+2. Create a feature branch.
+3. Commit your changes.
+4. Push your branch.
+5. Open a Pull Request.
 
-</div>
+---
+
+## License
+
+This project is licensed under the MIT License.
+
+See the `LICENSE` file for details.
+
+---
+
+## Acknowledgements
+
+- OpenCode
+- Monaco Editor
+- Tailwind CSS
+- Font Awesome
