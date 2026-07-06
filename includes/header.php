@@ -1003,17 +1003,15 @@
             <span>Logout</span>
         </a>
         <?php endif; ?>
-    <?php
-    endif; ?>
-</div>
+    </div>
 
-<div class="tw-sidebar-section" style="border-top: 1px solid #2D2D35; margin-top: auto;">
-    <div class="tw-sidebar-section-title">Donate ❤️</div>
-    <a href="index.php?page=donate" class="tw-nav-item">
-        <i class="fas fa-heart" style="color: #E9197B;"></i>
-        <span>Support Rustnite</span>
-    </a>
-</div>
+    <div class="tw-sidebar-section" style="border-top: 1px solid #2D2D35; margin-top: auto;">
+        <div class="tw-sidebar-section-title">Donate ❤️</div>
+        <a href="index.php?page=donate" class="tw-nav-item">
+            <i class="fas fa-heart" style="color: #E9197B;"></i>
+            <span>Support Rustnite</span>
+        </a>
+    </div>
 </div>
 <?php endif; ?>
 
@@ -1055,7 +1053,13 @@
 
                 <div class="tw-user-menu" onclick="window.location='index.php?page=profile'">
                     >
-                                        <?= get_avatar_html($current_user, 32, !empty($current_user["is_online"]) ? "online" : "") ?>
+                                        <?= get_avatar_html(
+                                            $current_user,
+                                            32,
+                                            !empty($current_user["is_online"])
+                                                ? "online"
+                                                : "",
+                                        ) ?>
                                         <div class="tw-user-info">
                         <div class="name"><?= htmlspecialchars(
                             $current_user["username"],
