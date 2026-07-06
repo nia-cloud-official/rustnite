@@ -1,4 +1,8 @@
 <?php
+// Ensure clean JSON output even if errors occur
+ini_set("display_errors", 0);
+error_reporting(E_ALL);
+
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
@@ -26,13 +30,10 @@ register_shutdown_function(function () {
     }
 });
 
-error_reporting(E_ALL);
-
 require_once "../config.php";
 require_once "../includes/db.php";
 require_once "../includes/functions.php";
 
-ini_set("display_errors", 0);
 ob_clean();
 
 // Handle preflight
@@ -87,7 +88,7 @@ if (empty($code)) {
 // Get language info
 $lang = get_language_by_slug($language_slug);
 if (!$lang) {
-    $lang = get_language_by_id(1); // Default to Rust
+    $lang = get_language_by_id(1);
 }
 
 // Security: Basic code validation per language
@@ -112,8 +113,11 @@ if ($result["success"]) {
     exit();
 }
 
-// Fallback to simulation
-echo json_encode(simulate_execution($code, $lesson_id, $lang));
+// Fallback to simulation with a note
+$sim_result = simulate_execution($code, $lesson_id, $lang);
+$sim_result["note"] =
+    "Code was executed in simulation mode. For real compilation, configure Docker or Piston API.";
+echo json_encode($sim_result);
 
 function get_restricted_patterns($language)
 {
@@ -206,14 +210,14 @@ function execute_code($code, $lang)
         }
     }
 
-    // Try Docker for any language
-    $result = execute_with_docker($code, $lang);
+    // Try Piston API for multi-language
+    $result = execute_with_piston($code, $lang);
     if ($result["success"]) {
         return $result;
     }
 
-    // Try Piston API for multi-language
-    $result = execute_with_piston($code, $lang);
+    // Try Docker for any language
+    $result = execute_with_docker($code, $lang);
     if ($result["success"]) {
         return $result;
     }
@@ -278,7 +282,6 @@ function execute_with_docker($code, $lang)
 
     $docker_image = $lang["docker_image"] ?? "rust:1.70";
 
-    // Build appropriate command
     $compile_cmd = $lang["compiler_command"] ?? "";
     $run_cmd = $lang["run_command"] ?? "";
 
@@ -304,7 +307,6 @@ function execute_with_docker($code, $lang)
     $output = shell_exec($cmd);
     $execution_time = round((microtime(true) - $start_time) * 1000, 2);
 
-    // Cleanup
     array_map("unlink", glob($temp_dir . "/*"));
     rmdir($temp_dir);
 
@@ -386,269 +388,118 @@ function simulate_execution($code, $lesson_id, $lang)
         $expected_output = $stmt->fetchColumn() ?: "";
     }
 
-    // Try to evaluate expressions for dynamic output
     $output = "";
     $stderr = "";
     $success = true;
 
     switch ($lang["slug"]) {
         case "rust":
-            if (!preg_match("/fn\s+main\s*\(\s*\)/", $code)) {
-                $stderr = "error: `main` function not found in crate root";
-                $success = false;
-            } else {
-                // Extract println! calls
+            if (strpos($code, "println!") !== false) {
+                preg_match_all('/println!\s*\(\s*"([^"]*)"/', $code, $matches);
+                foreach ($matches[1] as $m) {
+                    $output .= $m . "\n";
+                }
+            }
+            if (empty($output)) {
+                $output = "Code compiled and executed successfully.\n";
+            }
+            break;
+        case "python":
+            if (strpos($code, "print") !== false) {
                 preg_match_all(
-                    '/println!\s*\(\s*"([^"]*)"(?:\s*,\s*([^)]*))?\s*\)/',
+                    '/print\s*\(\s*["\']([^"\']*)["\']/',
                     $code,
                     $matches,
                 );
-                if (!empty($matches[1])) {
-                    foreach ($matches[1] as $i => $text) {
-                        $arg = $matches[2][$i] ?? "";
-                        if (!empty($arg)) {
-                            // Try to evaluate simple expressions
-                            $arg = trim($arg);
-                            if (preg_match('/^\d+\s*\+\s*\d+$/', $arg)) {
-                                $parts = explode("+", $arg);
-                                $text = str_replace(
-                                    "{}",
-                                    (int) $parts[0] + (int) $parts[1],
-                                    $text,
-                                );
-                            } elseif (is_numeric($arg)) {
-                                $text = str_replace("{}", $arg, $text);
-                            } else {
-                                $text = str_replace("{}", $arg, $text);
-                            }
-                        }
-                        $output .= $text . "\n";
-                    }
-                } else {
-                    $output .= "Program compiled successfully!\n";
+                foreach ($matches[1] as $m) {
+                    $output .= $m . "\n";
                 }
             }
-            break;
-
-        case "python":
-            preg_match_all(
-                '/print\s*\(\s*["\']([^"\']*)["\']\s*\)/',
-                $code,
-                $matches,
-            );
-            if (!empty($matches[1])) {
-                foreach ($matches[1] as $text) {
-                    $output .= $text . "\n";
-                }
-            } else {
-                // Try to evaluate print with expressions
-                preg_match_all(
-                    "/print\s*\((\d+\s*[+\-*\/]\s*\d+)\)/",
-                    $code,
-                    $expr_matches,
-                );
-                if (!empty($expr_matches[1])) {
-                    foreach ($expr_matches[1] as $expr) {
-                        try {
-                            $result = eval("return " . $expr . ";");
-                            $output .= $result . "\n";
-                        } catch (\Exception $e) {
-                            $output .= $expr . "\n";
-                        }
-                    }
-                } else {
-                    $output .= "Program executed successfully!\n";
-                }
+            if (empty($output)) {
+                $output = "Code executed successfully.\n";
             }
             break;
-
         case "javascript":
-        case "typescript":
-            preg_match_all(
-                '/console\.log\s*\(\s*["\']([^"\']*)["\']\s*\)/',
-                $code,
-                $matches,
-            );
-            if (!empty($matches[1])) {
-                foreach ($matches[1] as $text) {
-                    $output .= $text . "\n";
+            if (strpos($code, "console.log") !== false) {
+                preg_match_all(
+                    '/console\.log\s*\(\s*["\']([^"\']*)["\']/',
+                    $code,
+                    $matches,
+                );
+                foreach ($matches[1] as $m) {
+                    $output .= $m . "\n";
                 }
-            } else {
-                $output .= "Program executed successfully!\n";
+            }
+            if (empty($output)) {
+                $output = "Code executed successfully.\n";
             }
             break;
-
-        case "go":
-            preg_match_all(
-                '/fmt\.Println\s*\(\s*["\']([^"\']*)["\']\s*\)/',
-                $code,
-                $matches,
-            );
-            if (!empty($matches[1])) {
-                foreach ($matches[1] as $text) {
-                    $output .= $text . "\n";
-                }
-            } else {
-                $output .= "Program compiled successfully!\n";
-            }
-            break;
-
-        case "java":
-            preg_match_all(
-                '/System\.out\.println\s*\(\s*["\']([^"\']*)["\']\s*\)/',
-                $code,
-                $matches,
-            );
-            if (!empty($matches[1])) {
-                foreach ($matches[1] as $text) {
-                    $output .= $text . "\n";
-                }
-            } else {
-                $output .= "Program compiled and executed successfully!\n";
-            }
-            break;
-
-        case "cpp":
-        case "c":
-            preg_match_all(
-                '/printf\s*\(\s*["\']([^"\']*)["\']\s*\)/',
-                $code,
-                $matches,
-            );
-            if (!empty($matches[1])) {
-                foreach ($matches[1] as $text) {
-                    $output .= $text . "\n";
-                }
-            } else {
-                $output .= "Program compiled successfully!\n";
-            }
-            break;
-
         default:
-            preg_match_all(
-                '/print.*\(.*["\']([^"\']*)["\'].*\)/',
-                $code,
-                $matches,
-            );
-            if (!empty($matches[1])) {
-                foreach ($matches[1] as $text) {
-                    $output .= $text . "\n";
-                }
-            } else {
-                $output .= "Program executed successfully!\n";
-            }
-    }
-
-    // Check against expected output
-    if ($expected_output && !empty($output)) {
-        if (trim($output) === trim($expected_output)) {
-            $stderr .= "✅ Output matches expected result!\n";
-        } else {
-            $stderr .= "Expected: " . $expected_output . "\n";
-            $stderr .= "Got: " . trim($output) . "\n";
-        }
+            $output = "Code execution completed.\n";
     }
 
     return [
-        "success" => $success,
+        "success" => true,
         "output" => $output,
         "stderr" => $stderr,
-        "execution_time" => "Local",
+        "execution_time" => "simulated",
+        "expected_output" => $expected_output,
     ];
 }
 
-// ============== LINTING & FORMATTING ==============
-
-function lint_code($code, $language_slug)
+function lint_code($code, $language)
 {
     $issues = [];
 
-    switch ($language_slug) {
-        case "rust":
-            // Check common Rust issues
-            if (!preg_match("/fn\s+main/", $code)) {
-                $issues[] = [
-                    "line" => 0,
-                    "severity" => "error",
-                    "message" => "Missing main function",
-                ];
-            }
-            if (
-                preg_match("/\bprintln!\s*\(/", $code) &&
-                !preg_match("/\bfn\s+main/", $code)
-            ) {
-                $issues[] = [
-                    "line" => 0,
-                    "severity" => "warning",
-                    "message" => "println! should be inside a function",
-                ];
-            }
-            if (preg_match('/=\s*$/', $code, $m, PREG_OFFSET_CAPTURE)) {
-                $pos = $m[0][1];
-                $line = substr_count(substr($code, 0, $pos), "\n") + 1;
-                $issues[] = [
-                    "line" => $line,
-                    "severity" => "warning",
-                    "message" => "Trailing assignment operator",
-                ];
-            }
-            break;
+    $patterns = [
+        "rust" => [
+            ["pattern" => "/fn main/", "message" => "Entry point function"],
+            ["pattern" => "/;/", "message" => "Statement terminator"],
+        ],
+        "python" => [
+            ["pattern" => "/:/", "message" => "Block indicator"],
+            ["pattern" => "/def /", "message" => "Function definition"],
+        ],
+    ];
 
-        case "python":
-            if (!preg_match("/print\s*\(/", $code)) {
-                $issues[] = [
-                    "line" => 0,
-                    "severity" => "info",
-                    "message" => "No print() call - you won't see output",
-                ];
-            }
-            if (preg_match("/\binput\s*\(/", $code)) {
-                $issues[] = [
-                    "line" => 0,
-                    "severity" => "warning",
-                    "message" => "input() not supported in sandbox",
-                ];
-            }
-            break;
+    $lang_patterns = $patterns[$language] ?? [];
 
-        case "javascript":
-            if (!preg_match("/console\.log/", $code)) {
-                $issues[] = [
-                    "line" => 0,
-                    "severity" => "info",
-                    "message" => "No console.log() - you won't see output",
-                ];
-            }
-            break;
+    foreach ($lang_patterns as $p) {
+        if (!preg_match($p["pattern"], $code)) {
+            $issues[] = [
+                "line" => 1,
+                "message" => "Missing: " . $p["message"],
+                "severity" => "warning",
+            ];
+        }
     }
 
-    // Common checks for all languages
     $lines = explode("\n", $code);
     foreach ($lines as $i => $line) {
-        $lineNum = $i + 1;
-        // Check for trailing whitespace
-        if (preg_match('/\s+$/', $line) && strlen($line) > 0) {
-            $issues[] = [
-                "line" => $lineNum,
-                "severity" => "info",
-                "message" => "Trailing whitespace",
-            ];
+        $line_num = $i + 1;
+        $trimmed = trim($line);
+
+        if (empty($trimmed)) {
+            continue;
         }
-        // Check for very long lines
-        if (strlen($line) > 120) {
+
+        if (strlen($trimmed) > 200) {
             $issues[] = [
-                "line" => $lineNum,
-                "severity" => "warning",
+                "line" => $line_num,
                 "message" =>
-                    "Line too long (" . strlen($line) . " > 120 chars)",
+                    "Line too long (" .
+                    strlen($trimmed) .
+                    " chars). Consider breaking it up.",
+                "severity" => "warning",
             ];
         }
-        // Check for tabs vs spaces
-        if (strpos($line, "\t") !== false) {
+
+        if (preg_match('/\t/', $line)) {
             $issues[] = [
-                "line" => $lineNum,
+                "line" => $line_num,
+                "message" =>
+                    "Tab character detected. Use spaces for indentation.",
                 "severity" => "info",
-                "message" => "Consider using spaces instead of tabs",
             ];
         }
     }
@@ -656,9 +507,9 @@ function lint_code($code, $language_slug)
     return $issues;
 }
 
-function format_code($code, $language_slug)
+function format_code($code, $language)
 {
-    // Basic formatting:
+    // Simple formatting: normalize indentation and spacing
     $lines = explode("\n", $code);
     $formatted = [];
     $indent_level = 0;
@@ -666,21 +517,20 @@ function format_code($code, $language_slug)
 
     foreach ($lines as $line) {
         $trimmed = trim($line);
+        if (empty($trimmed)) {
+            $formatted[] = "";
+            continue;
+        }
 
-        // De-indent for closing braces/brackets
+        // De-indent for closing braces
         if (preg_match("/^[}\]]/", $trimmed)) {
             $indent_level = max(0, $indent_level - 1);
         }
 
-        // Add proper indentation
-        $indent = str_repeat(" ", $indent_level * $indent_size);
-        $formatted[] = $indent . $trimmed;
+        $formatted[] = str_repeat(" ", $indent_level * $indent_size) . $trimmed;
 
-        // In-indent for opening braces/brackets
-        if (
-            preg_match('/[\{\[]\s*$/', $trimmed) ||
-            preg_match('/:\s*$/', $trimmed)
-        ) {
+        // Indent after opening braces
+        if (preg_match('/[{\[(]\s*$/', $trimmed)) {
             $indent_level++;
         }
     }
