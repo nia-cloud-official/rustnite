@@ -862,159 +862,7 @@ function call_opencode_api($context, $language)
 
 function generate_fallback_response($context, $language)
 {
-    $lower_context = strtolower($context);
-    $trimmed = trim(
-        str_replace(["User: ", "Assistant: ", "\n"], " ", $lower_context),
-    );
-
-    // Detect question type
-    $is_greeting =
-        preg_match("/\b(hi|hello|hey|sup|howdy|yo|\g{d})\b/", $trimmed) &&
-        strlen($trimmed) < 20;
-    $is_explanation = preg_match(
-        "/\b(what is|explain|how does|tell me about|define|describe|what are|what's|how do)\b/",
-        $trimmed,
-    );
-    $is_help_with_code = preg_match(
-        "/\b(help|fix|debug|error|bug|wrong|issue|not working|broken|crash)\b/",
-        $trimmed,
-    );
-    $is_example = preg_match(
-        "/\b(example|show me|demonstrate|sample|snippet)\b/",
-        $trimmed,
-    );
-    $is_question = preg_match(
-        "/\?\s*$|\b(how|why|when|where|which|can you|could you|would you)\b/",
-        $trimmed,
-    );
-    $is_concept = preg_match(
-        "/\b(variable|function|class|loop|array|string|int|bool|null|object|method|property|inheritance|polymorphism|recursion|algorithm)\b/",
-        $trimmed,
-    );
-    $is_mini_game_create = preg_match(
-        "/\b(create|generate|make|new)\b.*\b(mini.game|game|challenge)\b/",
-        $trimmed,
-    );
-    $is_language_question = preg_match(
-        "/\b(rust|python|javascript|typescript|go|java|c\+\+|c\s*language)\b/",
-        $trimmed,
-    );
-
-    preg_match('/```(\w+)?\n(.*?)```/s', $context, $user_code);
-    $has_code = !empty($user_code);
-
-    // Extract the actual user question (remove system prompt)
-    $parts = explode("User: ", $context);
-    $user_question = end($parts);
-    $user_question = preg_replace("/\nAssistant:.*$/s", "", $user_question);
-    $user_question = trim($user_question);
-
-    $response = "";
-
-    if ($is_greeting) {
-        $greetings = [
-            "Hey there! \ud83d\udc4b Ready to write some {$language}? What can I help you with today?",
-            "Hello! \ud83d\ude80 I'm Big Pickle, your coding tutor. Ask me anything about {$language}!",
-            "Hi! \ud83c\udf89 What {$language} question can I help you tackle today?",
-        ];
-        $response = $greetings[array_rand($greetings)];
-    } elseif ($is_help_with_code && $has_code) {
-        $code = $user_code[2] ?? "";
-        $lines = explode("\n", $code);
-        $line_count = count($lines);
-        $response = "I see you've shared some code (\u2248{$line_count} lines). Let me help you debug it:\n\n";
-        $response .= "**What I'm looking at:**\n```{$language}\n{$code}\n```\n\n";
-        $response .= "**Common things to check in {$language}:**\n";
-        $lang_checks = [
-            "rust" =>
-                "- Ownership/borrowing rules\n- Semicolons and curly braces\n- Type annotations\n- Pattern matching exhaustiveness",
-            "python" =>
-                "- Indentation (4 spaces)\n- Colon after if/for/def\n- Import statements\n- Variable scope",
-            "javascript" =>
-                "- Semicolons and braces\n- Async/await handling\n- 'this' context\n- Array/object destructuring",
-            "typescript" =>
-                "- Type annotations\n- Interface vs type\n- Strict null checks\n- Generic constraints",
-            "go" =>
-                "- Package declarations\n- Error handling\n- Goroutine synchronization\n- Interface satisfaction",
-            "java" =>
-                "- Class/method declarations\n- Exception handling\n- Generic type parameters\n- Access modifiers",
-            "cpp" =>
-                "- Memory management\n- Header includes\n- Template syntax\n- Destructor/virtual rules",
-            "c" =>
-                "- Pointer arithmetic\n- Memory allocation\n- Header includes\n- Buffer sizes",
-        ];
-        $response .= $lang_checks[$language] ?? $lang_checks["rust"];
-        $response .=
-            "\n\nCould you tell me what error you're seeing or what behavior is unexpected? That'll help me give a more specific fix!";
-    } elseif ($is_mini_game_create) {
-        $response = "\ud83c\udfae **Mini-Game Creator**\n\nI'll help you make a coding mini-game! Head to the **Mini-Games Arena** and click **AI Generate** to create a custom game. You can pick language, type (Syntax Speed, Bug Hunt, Output Prediction, Code Race), and difficulty. The AI will build it with fresh challenges specific to {$language}!";
-    } elseif ($is_explanation || $is_concept || $is_question || $is_example) {
-        // Extract key concept from question
-        $concepts = [
-            "variable" => [
-                "Variables store data in memory. In {$language}, you declare them with specific syntax. They can be mutable (changeable) or immutable (fixed).",
-                "```{$language}\n// Example:\nlet x = 5; // immutable\nlet mut y = 10; // mutable\n```",
-            ],
-            "function" => [
-                "Functions are reusable blocks of code. They take inputs (parameters), perform operations, and return outputs.",
-                "```{$language}\n// Function pattern:\nfn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n```",
-            ],
-            "class" => [
-                "Classes are blueprints for creating objects. They encapsulate data and behavior together.",
-                "```{$language}\n// Class pattern varies by language\n```",
-            ],
-            "loop" => [
-                "Loops let you repeat code multiple times. Common types: for, while, and loop.",
-                "```{$language}\n// Loop example\nfor i in 0..5 {\n    println!(\"{} \", i);\n}\n```",
-            ],
-            "array" => [
-                "Arrays store multiple values of the same type in sequence. They're zero-indexed and fixed-size.",
-                "```{$language}\n// Array example\nlet arr = [1, 2, 3, 4, 5];\n```",
-            ],
-            "string" => [
-                "Strings hold text data. Different languages handle strings differently - some as objects, others as character arrays.",
-                "```{$language}\n// String handling varies by language\n```",
-            ],
-        ];
-
-        $found = false;
-        foreach ($concepts as $keyword => $info) {
-            if (strpos($trimmed, $keyword) !== false) {
-                $response = "**{$keyword}**\n\n{$info[0]}\n\n{$info[1]}\n\nWant me to go deeper into any specific aspect?";
-                $found = true;
-                break;
-            }
-        }
-
-        if (!$found) {
-            $response = "Great question about {$language}! \n\nHere's what I can tell you:\n\n";
-            $response .= get_language_fact($language) . "\n\n";
-            $response .=
-                "Could you be more specific about what you'd like to learn? I can help with:\n";
-            $response .=
-                "- **Syntax** \u2014 How to write specific constructs\n";
-            $response .=
-                "- **Concepts** \u2014 Variables, functions, types, etc.\n";
-            $response .= "- **Debugging** \u2014 Fix errors in your code\n";
-            $response .= "- **Best practices** \u2014 Idiomatic patterns\n\n";
-            $response .= "Just paste your code or ask away! \ud83d\ude80";
-        }
-    } else {
-        $response = "Hey! I'm Big Pickle \ud83e\udd0d\n\n";
-        $response .= "I can help you with:\n";
-        $response .=
-            "- \ud83d\udcdd **Explaining concepts** \u2014 \"What is a closure in Rust?\"\n";
-        $response .=
-            "- \ud83d\udee1\ufe0f **Debugging code** \u2014 Paste your code and I'll help fix it\n";
-        $response .=
-            "- \ud83d\udca1 **Code examples** \u2014 \"Show me a linked list in Go\"\n";
-        $response .=
-            "- \ud83c\udfae **Mini-games** \u2014 Ask me to create a coding game\n\n";
-        $response .= "Current language: **{$language}**. What would you like to learn?";
-    }
-
-    // Always award XP for engaging
-    return $response;
+    return "I'm sorry, the AI service is currently unavailable. Please try again in a moment. If this persists, check that the API key is configured correctly.";
 }
 
 // ============== AI MINI-GAME GENERATION ==============
@@ -2918,15 +2766,328 @@ print(f"x={x}, y={y}")',
                 "explanation" =>
                     "Lists are mutable ordered collections. Tuples are immutable. Both support indexing, slicing, and iteration.",
                 "template" => '# Create a list of numbers
-numbers = [1, 2, 3, 4, 5]
+            	numbers = [1, 2, 3, 4, 5]
 
-# Add a number to the list
-numbers.________(6)
+            	# Add a number to the list
+            	numbers.________(6)
 
-# Print the first and last elements
-print(f"First: {________}")
-print(f"Last: {________}")
-print(f"Count: {________}")',
+            	# Print the first and last elements
+            	print(f"First: {________}")
+            	print(f"Last: {________}")
+            	print(f"Count: {________}")',
+            ],
+        ],
+        "javascript" => [
+            "Variables (let/const)" => [
+                "example" => 'let name = "Alice";
+            	const age = 25;
+            	let score = 100;
+            	score += 10;
+            	console.log(`Name: ${name}, Age: ${age}`);
+            	console.log(`Score: ${score}`);',
+                "explanation" =>
+                    "`let` declares a mutable variable, `const` declares an immutable variable. Use `let` when the value will change, `const` when it won't.",
+                "template" => '// Declare variables using let and const
+            	let name = "________";
+            	const age = ________;
+            	let score = ________;
+
+            	// Update the score
+            	score += ________;
+
+            	console.log(`Name: ${name}`);
+            	console.log(`Age: ${age}`);
+            	console.log(`Score: ${score}`);',
+            ],
+            "Functions" => [
+                "example" => '// Function declaration
+            	function add(a, b) {
+            	    return a + b;
+            	}
+
+            	// Arrow function
+            	const multiply = (a, b) => a * b;
+
+            	console.log(`5 + 3 = ${add(5, 3)}`);
+            	console.log(`4 * 7 = ${multiply(4, 7)}`);',
+                "explanation" =>
+                    "JavaScript has function declarations (`function`) and arrow functions (`=>`). Arrow functions provide a shorter syntax and lexical `this` binding.",
+                "template" => '// Write a function declaration
+            	function ________(a, b) {
+            	    return a + b;
+            	}
+
+            	// Write an arrow function
+            	const ________ = (a, b) => a * b;
+
+            	console.log(`Sum: ${________(5, 3)}`);
+            	console.log(`Product: ${________(4, 7)}`);',
+            ],
+            "Objects & Arrays" => [
+                "example" => '// Object
+            	const person = {
+            	    name: "Bob",
+            	    age: 30,
+            	    city: "New York"
+            	};
+
+            	// Array
+            	const colors = ["red", "green", "blue"];
+            	colors.push("yellow");
+
+            	console.log(person.name);
+            	console.log(colors[0]);
+            	console.log(`Array length: ${colors.length}`);',
+                "explanation" =>
+                    "Objects store key-value pairs. Arrays store ordered lists. Both are fundamental data structures in JavaScript.",
+                "template" => '// Create an object
+            	const ________ = {
+            	    title: "________",
+            	    year: ________
+            	};
+
+            	// Create an array
+            	const ________ = ["red", "green", "blue"];
+            	________.push("________");
+
+            	console.log(book.title);
+            	console.log(fruits[0]);
+            	console.log(`Count: ${fruits.length}`);',
+            ],
+            "If/Else & Switch" => [
+                "example" => 'const age = 18;
+
+            	if (age >= 21) {
+            	    console.log("Adult (21+)");
+            	} else if (age >= 18) {
+            	    console.log("Adult (18+)");
+            	} else {
+            	    console.log("Minor");
+            	}',
+                "explanation" =>
+                    "`if`, `else if`, and `else` control conditional execution. The first matching block runs; the rest are skipped.",
+                "template" => 'const age = ________;
+
+            	if (age >= ________) {
+            	    console.log("Senior");
+            	} else ________ (age >= 18) {
+            	    console.log("Adult");
+            	} ________ {
+            	    console.log("Minor");
+            	}',
+            ],
+            "Loops" => [
+                "example" => '// For loop
+            	for (let i = 1; i <= 5; i++) {
+            	    console.log(`i = ${i}`);
+            	}
+
+            	// While loop
+            	let count = 0;
+            	while (count < 3) {
+            	    console.log(`count = ${count}`);
+            	    count++;
+            	}',
+                "explanation" =>
+                    "JavaScript has `for` and `while` loops. `for` loops iterate a set number of times; `while` loops run as long as a condition is true.",
+                "template" => '// For loop: print numbers 1 to 5
+            	for (let i = 1; i <= ________; i++) {
+            	    console.log(`i = ${i}`);
+            	}
+
+            	// While loop: print while count < 3
+            	let count = ________;
+            	while (________ < 3) {
+            	    console.log(`count = ${count}`);
+            	    ________++;
+            	}',
+            ],
+        ],
+        "typescript" => [
+            "Basic Types" => [
+                "example" => 'const name: string = "Alice";
+            	const age: number = 25;
+            	const isActive: boolean = true;
+            	console.log(`Name: ${name}, Age: ${age}`);
+            	console.log(`Active: ${isActive}`);',
+                "explanation" =>
+                    "TypeScript adds static types to JavaScript. `: string`, `: number`, `: boolean` specify the type of each variable, catching type errors at compile time.",
+                "template" => '// Declare typed variables
+            	const name: ________ = "Alice";
+            	const age: ________ = 25;
+            	const isActive: ________ = true;
+
+            	console.log(`Name: ${name}`);
+            	console.log(`Age: ${age}`);
+            	console.log(`Active: ${isActive}`);',
+            ],
+            "Interfaces" => [
+                "example" => 'interface Person {
+            	    name: string;
+            	    age: number;
+            	    greet(): string;
+            	}
+
+            	const user: Person = {
+            	    name: "Bob",
+            	    age: 30,
+            	    greet() {
+            	        return `Hi, I\'m ${this.name}`;
+            	    }
+            	};
+
+            	console.log(user.greet());',
+                "explanation" =>
+                    "Interfaces define the shape of an object. They specify required properties and their types, enabling type checking on object structures.",
+                "template" => '// Define an interface
+            	interface ________ {
+            	    title: string;
+            	    year: ________;
+            	    ________(): string;
+            	}
+
+            	// Implement the interface
+            	const myBook: Book = {
+            	    title: "________",
+            	    year: ________,
+            	    info() {
+            	        return `${this.title} (${this.year})`;
+            	    }
+            	};
+
+            	console.log(myBook.info());',
+            ],
+            "Functions & Types" => [
+                "example" => 'function add(x: number, y: number): number {
+            	    return x + y;
+            	}
+
+            	const multiply = (a: number, b: number): number => a * b;
+
+            	console.log(`5 + 3 = ${add(5, 3)}`);
+            	console.log(`4 * 7 = ${multiply(4, 7)}`);',
+                "explanation" =>
+                    "TypeScript functions specify parameter types and return types. Arrow functions use `=>` and can have implicit returns for single expressions.",
+                "template" => '// Typed function declaration
+            	function ________(x: ________, y: ________): ________ {
+            	    return x + y;
+            	}
+
+            	// Typed arrow function
+            	const ________ = (a: number, b: number): ________ => a * b;
+
+            	console.log(`Sum: ${add(5, 3)}`);
+            	console.log(`Product: ${multiply(4, 7)}`);',
+            ],
+        ],
+        "go" => [
+            "Variables & Constants" => [
+                "example" => 'package main
+
+            	import "fmt"
+
+            	func main() {
+            	    var name string = "Alice"
+            	    age := 25
+            	    const pi float64 = 3.14159
+            	    score := 100
+            	    score += 10
+            	    fmt.Printf("Name: %s, Age: %d\n", name, age)
+            	    fmt.Printf("Pi: %.5f\n", pi)
+            	    fmt.Printf("Score: %d\n", score)
+            	}',
+                "explanation" =>
+                    "Go supports `var` declarations, `:=` short declarations, and `const` constants. Types can be explicit or inferred by the compiler.",
+                "template" => 'package main
+
+            	import "fmt"
+
+            	func main() {
+            	    // Declare variables and constants
+            	    var name ________ = "Alice"
+            	    age := ________
+            	    const pi ________ = 3.14159
+            	    var score ________ = 100
+
+            	    // Update score
+            	    score += ________
+
+            	    fmt.Printf("Name: %s, Age: %d\\n", name, age)
+            	    fmt.Printf("Pi: %.5f\\n", pi)
+            	    fmt.Printf("Score: %d\\n", score)
+            	}',
+            ],
+            "Functions" => [
+                "example" => 'package main
+
+            	import "fmt"
+
+            	func add(a int, b int) int {
+            	    return a + b
+            	}
+
+            	func main() {
+            	    sum := add(5, 3)
+            	    fmt.Printf("5 + 3 = %d\n", sum)
+            	}',
+                "explanation" =>
+                    "Functions in Go use the `func` keyword. Parameters and return types come after the parameter names. The `return` statement returns a value.",
+                "template" => 'package main
+
+            	import "fmt"
+
+            	// Write a function that multiplies two integers
+            	func multiply(a ________, b ________) ________ {
+            	    return a * b
+            	}
+
+            	func main() {
+            	    result := ________(4, 7)
+            	    fmt.Printf("4 * 7 = %d\\n", result)
+            	}',
+            ],
+            "Control Flow" => [
+                "example" => 'package main
+
+            	import "fmt"
+
+            	func main() {
+            	    age := 18
+
+            	    if age >= 21 {
+            	        fmt.Println("Adult (21+)")
+            	    } else if age >= 18 {
+            	        fmt.Println("Adult (18+)")
+            	    } else {
+            	        fmt.Println("Minor")
+            	    }
+
+            	    for i := 1; i <= 5; i++ {
+            	        fmt.Printf("i = %d\n", i)
+            	    }
+            	}',
+                "explanation" =>
+                    "Go uses `if`/`else if`/`else` for conditionals and `for` for loops (Go has no `while` keyword; `for` alone covers all looping).",
+                "template" => 'package main
+
+            	import "fmt"
+
+            	func main() {
+            	    age := ________
+
+            	    if age >= ________ {
+            	        fmt.Println("Senior")
+            	    } ________ ________ age >= 18 {
+            	        fmt.Println("Adult")
+            	    } ________ {
+            	        fmt.Println("Minor")
+            	    }
+
+            	    // For loop: print numbers 1 to 5
+            	    for i := 1; i <= ________; i++ {
+            	        fmt.Printf("i = %d\\n", i)
+            	    }
+            	}',
             ],
         ],
     ];
@@ -3161,6 +3322,268 @@ fn main() {
                     "Use print() to output",
                     "You can pass multiple args: print(a, b)",
                     "Use f-strings: print(f\"{var}\")",
+                ],
+            ],
+        ],
+        "javascript" => [
+            "Variables (let/const)" => [
+                "instruction" =>
+                    "Declare a `const` variable `name` with your name and a `let` variable `age` with your age. Update `age` by adding 1, then print both.",
+                "starter_code" => '// Your code here
+	const name = "________";
+	let age = ________;
+	age += ________;
+	console.log(name);
+	console.log(age);',
+                "expected_output" => "Alice\n26",
+                "test_cases" => [["input" => "", "expected" => "Alice\n26"]],
+                "hints" => [
+                    "Use const for values that won't change",
+                    "Use let for values that will change",
+                    "Use console.log() to output each variable",
+                ],
+            ],
+            "Functions" => [
+                "instruction" =>
+                    "Write both a function declaration `add` that returns the sum of two numbers, and an arrow function `multiply` that returns the product. Call both with 5 and 3 and print the results.",
+                "starter_code" => '// Your code here
+	function ________(a, b) {
+	    return ________;
+	}
+
+	const ________ = (a, b) => a * b;
+
+	console.log(add(5, 3));
+	console.log(multiply(5, 3));',
+                "expected_output" => "8\n15",
+                "test_cases" => [["input" => "", "expected" => "8\n15"]],
+                "hints" => [
+                    "Function declaration: function name(params) { return ...; }",
+                    "Arrow function: const name = (params) => expression;",
+                    "Return a + b in add, a * b in multiply",
+                ],
+            ],
+            "Objects & Arrays" => [
+                "instruction" =>
+                    "Create an object `book` with `title` and `year` properties, and an array `scores` with three numbers. Print the title, the first score, and the array length.",
+                "starter_code" => '// Your code here
+	const book = {
+	    title: "________",
+	    year: ________
+	};
+
+	const scores = [85, 92, ________];
+	scores.push(________);
+
+	console.log(book.title);
+	console.log(scores[0]);
+	console.log(scores.length);',
+                "expected_output" => "JavaScript Basics\n85\n4",
+                "test_cases" => [
+                    ["input" => "", "expected" => "JavaScript Basics\n85\n4"],
+                ],
+                "hints" => [
+                    "Objects use { key: value } syntax",
+                    "Arrays use [item1, item2] syntax",
+                    "Use .push() to add an element to the end",
+                ],
+            ],
+            "If/Else & Switch" => [
+                "instruction" =>
+                    "Write code that checks if a variable `score` is 90 or above (print \"A\"), 80 or above (print \"B\"), or else (print \"C\"). Use if/else if/else.",
+                "starter_code" => 'const score = 85;
+
+	if (score >= ________) {
+	    console.log("A");
+	} else ________ (score >= 80) {
+	    console.log("B");
+	} ________ {
+	    console.log("C");
+	}',
+                "expected_output" => "B",
+                "test_cases" => [["input" => "", "expected" => "B"]],
+                "hints" => [
+                    "Use >= for comparisons",
+                    "Check highest grade first",
+                    "else if for middle condition, else for fallback",
+                ],
+            ],
+            "Loops" => [
+                "instruction" =>
+                    "Write a for loop that prints numbers 1 to 5, then a while loop that prints \"Hello\" 3 times. Each on its own line.",
+                "starter_code" => '// For loop
+	for (let i = 1; i <= ________; i++) {
+	    console.log(i);
+	}
+
+	// While loop
+	let count = ________;
+	while (count < 3) {
+	    console.log("Hello");
+	    ________++;
+	}',
+                "expected_output" => "1\n2\n3\n4\n5\nHello\nHello\nHello",
+                "test_cases" => [
+                    [
+                        "input" => "",
+                        "expected" => "1\n2\n3\n4\n5\nHello\nHello\nHello",
+                    ],
+                ],
+                "hints" => [
+                    "For loop: for (initialize; condition; increment)",
+                    "While loop: while (condition) { body }",
+                    "Increment count inside the while loop body",
+                ],
+            ],
+        ],
+        "typescript" => [
+            "Basic Types" => [
+                "instruction" =>
+                    "Declare a `string` variable `greeting`, a `number` variable `year`, and a `boolean` variable `isDone`. Print them all on separate lines.",
+                "starter_code" => 'const greeting: ________ = "Hello";
+	const year: ________ = 2024;
+	const isDone: ________ = true;
+
+	console.log(greeting);
+	console.log(year);
+	console.log(isDone);',
+                "expected_output" => "Hello\n2024\ntrue",
+                "test_cases" => [
+                    ["input" => "", "expected" => "Hello\n2024\ntrue"],
+                ],
+                "hints" => [
+                    "Type annotations go after a colon",
+                    "string for text, number for numbers, boolean for true/false",
+                    "Use console.log() to output each value",
+                ],
+            ],
+            "Interfaces" => [
+                "instruction" =>
+                    "Define an interface `Car` with `make` (string), `model` (string), and `year` (number). Create a `Car` object and print its details.",
+                "starter_code" => 'interface Car {
+	    make: ________;
+	    model: ________;
+	    year: ________;
+	}
+
+	const myCar: Car = {
+	    make: "________",
+	    model: "________",
+	    year: ________
+	};
+
+	console.log(`${myCar.make} ${myCar.model} (${myCar.year})`);',
+                "expected_output" => "Toyota Corolla (2020)",
+                "test_cases" => [
+                    ["input" => "", "expected" => "Toyota Corolla (2020)"],
+                ],
+                "hints" => [
+                    "Interface properties use name: type syntax",
+                    "The object must have all properties matching the interface",
+                    "Use template literals with \$\{} to format the output",
+                ],
+            ],
+            "Functions & Types" => [
+                "instruction" =>
+                    "Write a typed function `subtract` that takes two numbers and returns their difference. Then write a typed arrow function `divide` that divides two numbers. Print the results.",
+                "starter_code" => 'function ________(a: ________, b: ________): ________ {
+	    return a - b;
+	}
+
+	const ________ = (a: number, b: number): number => a / b;
+
+	console.log(subtract(10, 3));
+	console.log(divide(15, 3));',
+                "expected_output" => "7\n5",
+                "test_cases" => [["input" => "", "expected" => "7\n5"]],
+                "hints" => [
+                    "Function parameters need type annotations",
+                    "Return type goes after the parameter list",
+                    "Arrow functions use => between parameters and body",
+                ],
+            ],
+        ],
+        "go" => [
+            "Variables & Constants" => [
+                "instruction" =>
+                    "In Go, declare a `const` named `greeting` with value \"Hello\", a `var` `name` of type string with your name, and use `:=` to declare `age` as 25. Print greeting and name on one line, and age on another.",
+                "starter_code" => 'package main
+
+	import "fmt"
+
+	func main() {
+	    const ________ = "Hello"
+	    var name ________ = "Alice"
+	    ________ := 25
+
+	    fmt.Printf("%s, %s!\\n", greeting, name)
+	    fmt.Println(________)
+	}',
+                "expected_output" => "Hello, Alice!\n25",
+                "test_cases" => [
+                    ["input" => "", "expected" => "Hello, Alice!\n25"],
+                ],
+                "hints" => [
+                    "const declares a constant (cannot change)",
+                    "var name type declares a variable with explicit type",
+                    ":= is shorthand for declaring and assigning a variable",
+                ],
+            ],
+            "Functions" => [
+                "instruction" =>
+                    "Write a function `greet` that takes a `string` parameter `name` and returns a `string` greeting. Call it with \"Alice\" and print the result.",
+                "starter_code" => 'package main
+
+	import "fmt"
+
+	func ________(name ________) ________ {
+	    return "Hello, " + name + "!"
+	}
+
+	func main() {
+	    message := ________("Alice")
+	    fmt.Println(________)
+	}',
+                "expected_output" => "Hello, Alice!",
+                "test_cases" => [
+                    ["input" => "", "expected" => "Hello, Alice!"],
+                ],
+                "hints" => [
+                    "Function signature: func name(params) returnType { }",
+                    "Return type comes after parameters",
+                    "Use + to concatenate strings",
+                ],
+            ],
+            "Control Flow" => [
+                "instruction" =>
+                    "Write Go code that checks if `temperature` is above 30 (print \"Hot\"), above 20 (print \"Warm\"), or else (print \"Cool\"), then use a for loop to print numbers 1 to 3.",
+                "starter_code" => 'package main
+
+	import "fmt"
+
+	func main() {
+	    temperature := ________
+
+	    if temperature > ________ {
+	        fmt.Println("Hot")
+	    } ________ ________ temperature > 20 {
+	        fmt.Println("Warm")
+	    } ________ {
+	        fmt.Println("Cool")
+	    }
+
+	    for i := 1; i <= ________; i++ {
+	        fmt.Println(________)
+	    }
+	}',
+                "expected_output" => "Warm\n1\n2\n3",
+                "test_cases" => [
+                    ["input" => "", "expected" => "Warm\n1\n2\n3"],
+                ],
+                "hints" => [
+                    "if/else if/else work like other languages without parentheses around condition",
+                    "There's no while loop in Go; use for for everything",
+                    "for i := 1; i <= N; i++ is the standard counting loop",
                 ],
             ],
         ],
@@ -3443,24 +3866,50 @@ function render_markdown($text)
     // Horizontal rules
     $text = preg_replace('/^---$/m', "<hr>", $text);
 
+    // Paragraphs: wrap consecutive non-empty lines that aren't already HTML tags in <p> tags
+    $lines = explode("\n", $text);
+    $in_paragraph = false;
+    $paragraph = "";
+    $result_lines = [];
+    foreach ($lines as $line) {
+        $trimmed = trim($line);
+        // Skip lines that are already wrapped in HTML tags
+        if (empty($trimmed)) {
+            if ($in_paragraph && !empty($paragraph)) {
+                $result_lines[] = "<p>" . $paragraph . "</p>";
+                $paragraph = "";
+                $in_paragraph = false;
+            }
+            $result_lines[] = "";
+            continue;
+        }
+        // If line starts with an HTML block element, close any open paragraph first
+        if (
+            preg_match("/^<(h[1-6]|ul|ol|li|blockquote|pre|hr|p\b)/", $trimmed)
+        ) {
+            if ($in_paragraph && !empty($paragraph)) {
+                $result_lines[] = "<p>" . $paragraph . "</p>";
+                $paragraph = "";
+                $in_paragraph = false;
+            }
+            $result_lines[] = $line;
+            continue;
+        }
+        $in_paragraph = true;
+        if (!empty($paragraph)) {
+            $paragraph .= " ";
+        }
+        $paragraph .= $trimmed;
+    }
+    if ($in_paragraph && !empty($paragraph)) {
+        $result_lines[] = "<p>" . $paragraph . "</p>";
+    }
+    $text = implode("\n", $result_lines);
+
     // Restore code blocks
     foreach ($code_blocks as $placeholder => $html) {
         $text = str_replace(htmlspecialchars($placeholder), $html, $text);
     }
 
-    // Paragraphs (double newlines)
-    $paragraphs = explode("\n\n", $text);
-    $result = "";
-    foreach ($paragraphs as $p) {
-        $p = trim($p);
-        if (empty($p)) {
-            continue;
-        }
-        if (preg_match("/^<(h[1-3]|ul|ol|li|pre|blockquote|hr)/", $p)) {
-            $result .= $p . "\n";
-        } else {
-            $result .= "<p>" . nl2br($p) . "</p>\n";
-        }
-    }
-    return $result;
+    return $text;
 }

@@ -1,4 +1,10 @@
 <?php
+// Absolute output control - discard all accidental output
+while (ob_get_level()) {
+    ob_end_clean();
+}
+ob_start();
+
 // Must come BEFORE any require to suppress PHP error HTML from corrupting JSON
 ini_set("display_errors", 0);
 error_reporting(0);
@@ -7,8 +13,6 @@ header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
-
-ob_start();
 
 register_shutdown_function(function () {
     $error = error_get_last();
@@ -21,7 +25,7 @@ register_shutdown_function(function () {
             E_COMPILE_ERROR,
         ])
     ) {
-        ob_clean();
+        ob_get_clean();
         echo json_encode([
             "success" => false,
             "output" => "",
@@ -47,6 +51,7 @@ if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
 
 // Test endpoint
 if (isset($_GET["test"])) {
+    ob_clean();
     echo json_encode([
         "status" => "API is working",
         "timestamp" => time(),
@@ -60,12 +65,14 @@ $code = $_GET["code"] ?? ($_POST["code"] ?? "");
 $language_slug = $_GET["language"] ?? ($_POST["language"] ?? "rust");
 
 if (isset($_GET["lint"])) {
+    ob_clean();
     echo json_encode(["issues" => lint_code($code, $language_slug)]);
     exit();
 }
 
 // Handle format request
 if (isset($_GET["format"])) {
+    ob_clean();
     echo json_encode(["formatted" => format_code($code, $language_slug)]);
     exit();
 }
@@ -73,6 +80,7 @@ if (isset($_GET["format"])) {
 // Only POST from here on for code execution
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     http_response_code(405);
+    ob_clean();
     echo json_encode(["error" => "Method not allowed"]);
     exit();
 }
@@ -80,6 +88,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
 $raw = file_get_contents("php://input");
 $input = json_decode($raw, true);
 if (!$input) {
+    ob_clean();
     echo json_encode(["error" => "Invalid JSON input"]);
     exit();
 }
@@ -89,6 +98,7 @@ $lesson_id = (int) ($input["lesson_id"] ?? 0);
 $language_slug = $input["language"] ?? "rust";
 
 if (empty($code)) {
+    ob_clean();
     echo json_encode(["error" => "No code provided"]);
     exit();
 }
@@ -101,6 +111,7 @@ if (!$lang) {
 $restricted_patterns = get_restricted_patterns($language_slug);
 foreach ($restricted_patterns as $pattern) {
     if (preg_match($pattern, $code)) {
+        ob_clean();
         echo json_encode([
             "error" => "Code contains restricted operations",
             "output" => "Error: Code execution blocked for security reasons.",
@@ -113,11 +124,13 @@ foreach ($restricted_patterns as $pattern) {
 $result = execute_code($code, $lang);
 
 if ($result["success"]) {
+    ob_clean();
     echo json_encode($result);
     exit();
 }
 
 $sim_result = simulate_execution($code, $lesson_id, $lang);
+ob_clean();
 echo json_encode($sim_result);
 exit();
 
