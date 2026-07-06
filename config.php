@@ -49,7 +49,7 @@ define(
     "OPENCODE_API_KEY",
     "sk-A4roVvunrQ1woG7zQFWIUO0XIUIV46vFEDib6Ezh2zccwWs5EbnjukJv5hzu6Uby",
 );
-define("OPENCODE_API_URL", "https://opencode.com/api/chat"); // OpenCode API endpoint
+define("OPENCODE_API_URL", "https://opencode.ai/zen/v1/chat/completions"); // OpenCode API endpoint
 
 // Supported languages
 define("DEFAULT_LANGUAGE", 1); // Rust

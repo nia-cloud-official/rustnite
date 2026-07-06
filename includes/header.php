@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="assets/favicon.png">
     <title><?= (isset($page_title) ? $page_title . " - " : "") .
         APP_NAME ?> - <?= APP_TAGLINE ?></title>
 
@@ -876,11 +877,7 @@
 <!-- ====== LEFT SIDEBAR (TWITCH STYLE) ====== -->
 <div class="tw-sidebar" id="main-sidebar">
     <div class="tw-sidebar-header">
-        <div class="tw-logo">R</div>
-        <div>
-            <div style="font-size: 16px; font-weight: 800; color: #EFEFF1;">Rustnite</div>
-            <div style="font-size: 11px; color: #9147FF; font-weight: 600;">Battle Royale Arena</div>
-        </div>
+        <img src="assets/logo.png" alt="Rustnite" style="height: 40px; display: block;">
     </div>
 
     <div class="tw-sidebar-section">

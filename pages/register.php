@@ -42,7 +42,7 @@ $languages = get_languages();
         <div class="tw-card">
             <div class="tw-card-body">
                 <div style="text-align:center; margin-bottom:32px;">
-                    <div class="tw-logo" style="margin:0 auto 16px;">R</div>
+                    <img src="assets/logo.png" alt="Rustnite" style="height: 48px; margin:0 auto 16px; display:block;">
                     <h1 class="text-2xl font-bold gradient-text">Join Rustnite</h1>
                     <p class="text-sm text-twitch-muted mt-1">Start your coding journey today</p>
                 </div>

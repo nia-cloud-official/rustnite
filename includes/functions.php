@@ -777,7 +777,10 @@ function call_opencode_api($context, $language)
     ];
 
     $payload = json_encode([
+        "model" => AI_TUTOR_MODEL,
         "messages" => $messages,
+        "max_tokens" => AI_TUTOR_MAX_TOKENS,
+        "temperature" => AI_TUTOR_TEMPERATURE,
     ]);
 
     $ch = curl_init(OPENCODE_API_URL);
