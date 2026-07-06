@@ -267,7 +267,7 @@ foreach ($languages as $lang) {
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                             <div>
                                 <label class="block text-sm font-medium text-twitch-muted mb-1">GitHub</label>
                                 <div class="flex items-center gap-2">
@@ -275,15 +275,6 @@ foreach ($languages as $lang) {
                                     <input type="text" name="github_username" value="<?= htmlspecialchars(
                                         $user["github_username"] ?? "",
                                     ) ?>" class="flex-1 p-3 bg-twitch-medium border border-twitch-border rounded-lg text-twitch-text focus:outline-none focus:border-twitch-purple" placeholder="username">
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-twitch-muted mb-1">Twitter</label>
-                                <div class="flex items-center gap-2">
-                                    <i class="fab fa-twitter" style="color:#ADADB8;"></i>
-                                    <input type="text" name="twitter_username" value="<?= htmlspecialchars(
-                                        $user["twitter_username"] ?? "",
-                                    ) ?>" class="flex-1 p-3 bg-twitch-medium border border-twitch-border rounded-lg text-twitch-text focus:outline-none focus:border-twitch-purple" placeholder="@username">
                                 </div>
                             </div>
                             <div>

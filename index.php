@@ -414,6 +414,36 @@ if (
     exit();
 }
 
+// Handle lesson page redirects before header output
+if ($page === "lesson") {
+    $lesson_id = (int) ($_GET["id"] ?? 0);
+    // Handle AI generate lesson
+    if (isset($_GET["generate"]) && $lesson_id === 0) {
+        $lang_id = (int) ($_GET["language"] ?? 1);
+        $diff = $_GET["difficulty"] ?? "beginner";
+        $result = generate_ai_lesson($lang_id, $diff);
+        if (!isset($result["error"])) {
+            header(
+                "Location: index.php?page=lesson&id=" . $result["lesson_id"],
+            );
+            exit();
+        }
+        // If generation failed, redirect back with message
+        $_SESSION["flash_message"] =
+            $result["error"] ?? "Failed to generate lesson";
+        header("Location: index.php?page=lessons&language=" . $lang_id);
+        exit();
+    }
+    // Check lesson exists
+    if ($lesson_id > 0) {
+        $test_lesson = get_lesson_by_id($lesson_id);
+        if (!$test_lesson) {
+            header("Location: index.php?page=lessons");
+            exit();
+        }
+    }
+}
+
 // Hide sidebar/topbar for home page (landing)
 $hide_chrome = $page === "home";
 if ($page === "home" && isset($_SESSION["user_id"])) {

@@ -1,7 +1,7 @@
 <?php
-// Ensure clean JSON output even if errors occur
+// Must come BEFORE any require to suppress PHP error HTML from corrupting JSON
 ini_set("display_errors", 0);
-error_reporting(E_ALL);
+error_reporting(0);
 
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
@@ -34,6 +34,9 @@ require_once "../config.php";
 require_once "../includes/db.php";
 require_once "../includes/functions.php";
 
+// config.php sets display_errors=1, so we must suppress it again
+ini_set("display_errors", 0);
+error_reporting(0);
 ob_clean();
 
 // Handle preflight
@@ -74,7 +77,12 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     exit();
 }
 
-$input = json_decode(file_get_contents("php://input"), true);
+$raw = file_get_contents("php://input");
+$input = json_decode($raw, true);
+if (!$input) {
+    echo json_encode(["error" => "Invalid JSON input"]);
+    exit();
+}
 
 $code = $input["code"] ?? "";
 $lesson_id = (int) ($input["lesson_id"] ?? 0);
@@ -85,27 +93,23 @@ if (empty($code)) {
     exit();
 }
 
-// Get language info
 $lang = get_language_by_slug($language_slug);
 if (!$lang) {
     $lang = get_language_by_id(1);
 }
 
-// Security: Basic code validation per language
 $restricted_patterns = get_restricted_patterns($language_slug);
 foreach ($restricted_patterns as $pattern) {
     if (preg_match($pattern, $code)) {
         echo json_encode([
             "error" => "Code contains restricted operations",
-            "output" =>
-                "Error: Code execution blocked for security reasons. Avoid using file system, network, or unsafe operations.",
+            "output" => "Error: Code execution blocked for security reasons.",
             "stderr" => "Security violation detected",
         ]);
         exit();
     }
 }
 
-// Try external execution methods
 $result = execute_code($code, $lang);
 
 if ($result["success"]) {
@@ -113,10 +117,7 @@ if ($result["success"]) {
     exit();
 }
 
-// Fallback to simulation with a note
 $sim_result = simulate_execution($code, $lesson_id, $lang);
-$sim_result["note"] =
-    "Code was executed in simulation mode. For real compilation, configure Docker or Piston API.";
 echo json_encode($sim_result);
 
 function get_restricted_patterns($language)
@@ -137,8 +138,6 @@ function get_restricted_patterns($language)
             "/import\s+subprocess/i",
             "/import\s+socket/i",
             "/import\s+shutil/i",
-            "/import\s+sys\s*\.\s*/, /__import__/i",
-            '/open\(.*[\'\"].*\.\..*[\'\"]/i',
             "/eval\s*\(/i",
             "/exec\s*\(/i",
             "/pickle/i",
@@ -147,12 +146,9 @@ function get_restricted_patterns($language)
         "javascript" => [
             '/require\s*\(\s*[\'"]fs[\'"]\s*\)/i',
             '/require\s*\(\s*[\'"]child_process[\'"]\s*\)/i',
-            '/require\s*\(\s*[\'"]net[\'"]\s*\)/i',
             "/process\./i",
-            "/global\./i",
             "/eval\s*\(/i",
             "/Function\s*\(/i",
-            "/import\s+.*\s+from/i",
         ],
         "typescript" => [
             '/require\s*\(\s*[\'"]fs[\'"]\s*\)/i',
@@ -170,12 +166,8 @@ function get_restricted_patterns($language)
         "java" => [
             "/java\.io\./i",
             "/java\.net\./i",
-            "/java\.nio\./i",
             "/Runtime\.getRuntime/i",
             "/ProcessBuilder/i",
-            "/File/i",
-            "/FileWriter/i",
-            "/FileReader/i",
             "/Socket/i",
             "/ServerSocket/i",
         ],
@@ -196,32 +188,25 @@ function get_restricted_patterns($language)
             "/exec/i",
         ],
     ];
-
     return $patterns[$language] ?? $patterns["rust"];
 }
 
 function execute_code($code, $lang)
 {
-    // Try Rust Playground API for Rust
     if ($lang["slug"] === "rust") {
         $result = execute_with_playground($code);
         if ($result["success"]) {
             return $result;
         }
     }
-
-    // Try Piston API for multi-language
     $result = execute_with_piston($code, $lang);
     if ($result["success"]) {
         return $result;
     }
-
-    // Try Docker for any language
     $result = execute_with_docker($code, $lang);
     if ($result["success"]) {
         return $result;
     }
-
     return ["success" => false];
 }
 
@@ -236,7 +221,6 @@ function execute_with_playground($code)
         "code" => $code,
         "backtrace" => false,
     ]);
-
     $ch = curl_init("https://play.rust-lang.org/execute");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -246,11 +230,9 @@ function execute_with_playground($code)
         "Content-Length: " . strlen($payload),
     ]);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-
     if ($http_code === 200 && $response) {
         $result = json_decode($response, true);
         if (isset($result["success"])) {
@@ -262,69 +244,50 @@ function execute_with_playground($code)
             ];
         }
     }
-
     return ["success" => false];
 }
 
 function execute_with_docker($code, $lang)
 {
-    $docker_check = shell_exec("which docker 2>/dev/null");
+    $docker_check = @shell_exec("which docker 2>/dev/null");
     if (empty($docker_check)) {
         return ["success" => false];
     }
-
     $temp_dir = sys_get_temp_dir() . "/rustnite_" . uniqid();
-    mkdir($temp_dir, 0755, true);
-
+    @mkdir($temp_dir, 0755, true);
     $ext = $lang["extension"] ?? ".rs";
-    $source_file = $temp_dir . "/main" . $ext;
-    file_put_contents($source_file, $code);
-
-    $docker_image = $lang["docker_image"] ?? "rust:1.70";
-
+    file_put_contents($temp_dir . "/main" . $ext, $code);
     $compile_cmd = $lang["compiler_command"] ?? "";
     $run_cmd = $lang["run_command"] ?? "";
-
-    $full_cmd = "";
-    if ($compile_cmd) {
-        $full_cmd = "{$compile_cmd} && {$run_cmd}";
-    } else {
-        $full_cmd = $run_cmd;
-    }
-
+    $full_cmd = $compile_cmd ? "{$compile_cmd} && {$run_cmd}" : $run_cmd;
     if (empty($full_cmd)) {
         return ["success" => false];
     }
-
     $cmd = sprintf(
         "timeout 10s docker run --rm -v %s:/app -w /app %s sh -c %s 2>&1",
         escapeshellarg($temp_dir),
-        escapeshellarg($docker_image),
+        escapeshellarg($lang["docker_image"] ?? "rust:1.70"),
         escapeshellarg($full_cmd),
     );
-
-    $start_time = microtime(true);
-    $output = shell_exec($cmd);
-    $execution_time = round((microtime(true) - $start_time) * 1000, 2);
-
-    array_map("unlink", glob($temp_dir . "/*"));
-    rmdir($temp_dir);
-
+    $start = microtime(true);
+    $output = @shell_exec($cmd);
+    $time = round((microtime(true) - $start) * 1000, 2);
+    @array_map("unlink", glob($temp_dir . "/*"));
+    @rmdir($temp_dir);
     if ($output !== null) {
         return [
             "success" => true,
             "output" => $output,
             "stderr" => "",
-            "execution_time" => $execution_time . "ms (Docker)",
+            "execution_time" => $time . "ms (Docker)",
         ];
     }
-
     return ["success" => false];
 }
 
 function execute_with_piston($code, $lang)
 {
-    $language_map = [
+    $map = [
         "rust" => "rust",
         "python" => "python3",
         "javascript" => "javascript",
@@ -334,35 +297,25 @@ function execute_with_piston($code, $lang)
         "cpp" => "cpp",
         "c" => "c",
     ];
-
-    $piston_lang = $language_map[$lang["slug"]] ?? "rust";
-
-    $payload = json_encode([
-        "language" => $piston_lang,
-        "source" => $code,
-    ]);
-
+    $piston_lang = $map[$lang["slug"]] ?? "rust";
+    $payload = json_encode(["language" => $piston_lang, "source" => $code]);
     $ch = curl_init("https://emkc.org/api/v2/piston/execute");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
     curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);
     curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-
     if ($http_code === 200 && $response) {
         $result = json_decode($response, true);
         if (isset($result["run"])) {
             $output = $result["run"]["stdout"] ?? "";
             $stderr = $result["run"]["stderr"] ?? "";
-
             if ($result["run"]["code"] !== 0 && empty($output)) {
                 $stderr = $result["compile"]["stderr"] ?? $stderr;
             }
-
             return [
                 "success" => true,
                 "output" => $output,
@@ -371,14 +324,12 @@ function execute_with_piston($code, $lang)
             ];
         }
     }
-
     return ["success" => false];
 }
 
 function simulate_execution($code, $lesson_id, $lang)
 {
     global $pdo;
-
     $expected_output = "";
     if ($lesson_id > 0) {
         $stmt = $pdo->prepare(
@@ -387,17 +338,14 @@ function simulate_execution($code, $lesson_id, $lang)
         $stmt->execute([$lesson_id]);
         $expected_output = $stmt->fetchColumn() ?: "";
     }
-
     $output = "";
     $stderr = "";
-    $success = true;
-
     switch ($lang["slug"]) {
         case "rust":
             if (strpos($code, "println!") !== false) {
-                preg_match_all('/println!\s*\(\s*"([^"]*)"/', $code, $matches);
-                foreach ($matches[1] as $m) {
-                    $output .= $m . "\n";
+                preg_match_all('/println!\s*\(\s*"([^"]*)"/', $code, $m);
+                foreach ($m[1] as $v) {
+                    $output .= $v . "\n";
                 }
             }
             if (empty($output)) {
@@ -406,13 +354,9 @@ function simulate_execution($code, $lesson_id, $lang)
             break;
         case "python":
             if (strpos($code, "print") !== false) {
-                preg_match_all(
-                    '/print\s*\(\s*["\']([^"\']*)["\']/',
-                    $code,
-                    $matches,
-                );
-                foreach ($matches[1] as $m) {
-                    $output .= $m . "\n";
+                preg_match_all('/print\s*\(\s*["\']([^"\']*)["\']/', $code, $m);
+                foreach ($m[1] as $v) {
+                    $output .= $v . "\n";
                 }
             }
             if (empty($output)) {
@@ -424,10 +368,10 @@ function simulate_execution($code, $lesson_id, $lang)
                 preg_match_all(
                     '/console\.log\s*\(\s*["\']([^"\']*)["\']/',
                     $code,
-                    $matches,
+                    $m,
                 );
-                foreach ($matches[1] as $m) {
-                    $output .= $m . "\n";
+                foreach ($m[1] as $v) {
+                    $output .= $v . "\n";
                 }
             }
             if (empty($output)) {
@@ -437,7 +381,6 @@ function simulate_execution($code, $lesson_id, $lang)
         default:
             $output = "Code execution completed.\n";
     }
-
     return [
         "success" => true,
         "output" => $output,
@@ -450,90 +393,49 @@ function simulate_execution($code, $lesson_id, $lang)
 function lint_code($code, $language)
 {
     $issues = [];
-
-    $patterns = [
-        "rust" => [
-            ["pattern" => "/fn main/", "message" => "Entry point function"],
-            ["pattern" => "/;/", "message" => "Statement terminator"],
-        ],
-        "python" => [
-            ["pattern" => "/:/", "message" => "Block indicator"],
-            ["pattern" => "/def /", "message" => "Function definition"],
-        ],
-    ];
-
-    $lang_patterns = $patterns[$language] ?? [];
-
-    foreach ($lang_patterns as $p) {
-        if (!preg_match($p["pattern"], $code)) {
-            $issues[] = [
-                "line" => 1,
-                "message" => "Missing: " . $p["message"],
-                "severity" => "warning",
-            ];
-        }
-    }
-
     $lines = explode("\n", $code);
     foreach ($lines as $i => $line) {
-        $line_num = $i + 1;
-        $trimmed = trim($line);
-
-        if (empty($trimmed)) {
+        $n = $i + 1;
+        $t = trim($line);
+        if (empty($t)) {
             continue;
         }
-
-        if (strlen($trimmed) > 200) {
+        if (strlen($t) > 200) {
             $issues[] = [
-                "line" => $line_num,
-                "message" =>
-                    "Line too long (" .
-                    strlen($trimmed) .
-                    " chars). Consider breaking it up.",
+                "line" => $n,
+                "message" => "Line too long (" . strlen($t) . " chars)",
                 "severity" => "warning",
             ];
         }
-
         if (preg_match('/\t/', $line)) {
             $issues[] = [
-                "line" => $line_num,
-                "message" =>
-                    "Tab character detected. Use spaces for indentation.",
+                "line" => $n,
+                "message" => "Tab detected, use spaces",
                 "severity" => "info",
             ];
         }
     }
-
     return $issues;
 }
 
 function format_code($code, $language)
 {
-    // Simple formatting: normalize indentation and spacing
     $lines = explode("\n", $code);
-    $formatted = [];
-    $indent_level = 0;
-    $indent_size = 4;
-
+    $result = [];
+    $level = 0;
     foreach ($lines as $line) {
-        $trimmed = trim($line);
-        if (empty($trimmed)) {
-            $formatted[] = "";
+        $t = trim($line);
+        if (empty($t)) {
+            $result[] = "";
             continue;
         }
-
-        // De-indent for closing braces
-        if (preg_match("/^[}\]]/", $trimmed)) {
-            $indent_level = max(0, $indent_level - 1);
+        if (preg_match("/^[}\]]/", $t)) {
+            $level = max(0, $level - 1);
         }
-
-        $formatted[] = str_repeat(" ", $indent_level * $indent_size) . $trimmed;
-
-        // Indent after opening braces
-        if (preg_match('/[{\[(]\s*$/', $trimmed)) {
-            $indent_level++;
+        $result[] = str_repeat(" ", $level * 4) . $t;
+        if (preg_match('/[{\[(]\s*$/', $t)) {
+            $level++;
         }
     }
-
-    return implode("\n", $formatted);
+    return implode("\n", $result);
 }

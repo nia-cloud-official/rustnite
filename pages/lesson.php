@@ -2,28 +2,7 @@
 $page_title = "Lesson";
 $lesson_id = (int) ($_GET["id"] ?? 0);
 
-// Handle AI generate lesson
-if (isset($_GET["generate"]) && $lesson_id === 0) {
-    $lang_id = (int) ($_GET["language"] ?? 1);
-    $diff = $_GET["difficulty"] ?? "beginner";
-    $result = generate_ai_lesson($lang_id, $diff);
-    if (!isset($result["error"])) {
-        header("Location: index.php?page=lesson&id=" . $result["lesson_id"]);
-        exit();
-    }
-    // If generation failed, redirect back with message
-    $_SESSION["flash_message"] =
-        $result["error"] ?? "Failed to generate lesson";
-    header("Location: index.php?page=lessons&language=" . $lang_id);
-    exit();
-}
-
 $lesson = get_lesson_by_id($lesson_id);
-
-if (!$lesson) {
-    header("Location: index.php?page=lessons");
-    exit();
-}
 
 $lesson_lang = strtolower($lesson["language_slug"] ?? "rust");
 if ($lesson_lang !== "rust") {

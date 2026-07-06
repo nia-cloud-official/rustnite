@@ -3,7 +3,8 @@
 
 function sanitize($data)
 {
-    return htmlspecialchars(strip_tags(trim($data)));
+    // Strip tags, trim, and decode any existing HTML entities
+    return html_entity_decode(strip_tags(trim($data)), ENT_QUOTES, "UTF-8");
 }
 
 function redirect($url)
