@@ -414,15 +414,11 @@ if (
     exit();
 }
 
-// Home page redirect logic
-if ($page === "home") {
-    if (isset($_SESSION["user_id"])) {
-        header("Location: index.php?page=dashboard");
-        exit();
-    } else {
-        header("Location: index.php?page=login");
-        exit();
-    }
+// Hide sidebar/topbar for home page (landing)
+$hide_chrome = $page === "home";
+if ($page === "home" && isset($_SESSION["user_id"])) {
+    // Logged-in users see the dashboard when at 'home'
+    $page = "dashboard";
 }
 
 // Now include the header and page content

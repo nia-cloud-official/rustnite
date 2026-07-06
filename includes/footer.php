@@ -1,5 +1,9 @@
+<?php if (!($hide_chrome ?? false)): ?>
     </div><!-- .tw-content -->
 </div><!-- .tw-main -->
+<?php else: ?>
+</div><!-- .landing -->
+<?php endif; ?>
 
 <!-- Mobile Overlay -->
 <div id="mobile-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:99;" onclick="toggleMobileSidebar()"></div>

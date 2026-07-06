@@ -611,23 +611,7 @@
             animation: gradient-shift 8s ease infinite;
         }
 
-        /* ====== SCAN LINE OVERLAY ====== */
-        .scan-line-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(145, 71, 255, 0.03) 2px,
-                rgba(145, 71, 255, 0.03) 4px
-            );
-            pointer-events: none;
-            z-index: 5;
-        }
+        /* ====== SCAN LINE OVERLAY (REMOVED) ====== */
 
         /* ====== LIVE INDICATOR ====== */
         .live-dot {
@@ -882,6 +866,7 @@
 
 
 
+<?php if (!($hide_chrome ?? false)): ?>
 <!-- Toast Notification Container -->
 <div class="toast-container" id="toast-container"></div>
 
@@ -889,8 +874,10 @@
 <button class="tw-mobile-toggle" id="mobile-toggle" onclick="toggleMobileSidebar()">
     <i class="fas fa-bars"></i>
 </button>
+<?php endif; ?>
 
 <!-- ====== LEFT SIDEBAR (TWITCH STYLE) ====== -->
+<?php if (!($hide_chrome ?? false)): ?>
 <div class="tw-sidebar" id="main-sidebar">
     <div class="tw-sidebar-header">
         <img src="assets/logo.png" alt="Rustnite" style="height: 20px; display: block;">
@@ -936,7 +923,6 @@
             : "" ?>">
             <i class="fas fa-crosshairs"></i>
             <span>Battle Royale</span>
-            <span class="nav-badge purple">LIVE</span>
         </a>
 
         <a href="index.php?page=mini-games" class="tw-nav-item <?= ($_GET[
@@ -959,7 +945,6 @@
             : "" ?>">
             <i class="fas fa-robot"></i>
             <span>AI Tutor</span>
-            <span class="nav-badge green">NEW</span>
         </a>
 
         <a href="index.php?page=projects" class="tw-nav-item <?= ($_GET[
@@ -995,7 +980,6 @@
             : "" ?>">
             <i class="fas fa-rss"></i>
             <span>Feed</span>
-            <span class="nav-badge green">NEW</span>
         </a>
 
         <a href="index.php?page=profile" class="tw-nav-item <?= ($_GET[
@@ -1015,18 +999,22 @@
             <span>Logout</span>
         </a>
         <?php endif; ?>
-    </div>
-
-    <div class="tw-sidebar-section" style="border-top: 1px solid #2D2D35; margin-top: auto;">
-        <div class="tw-sidebar-section-title">Donate ❤️</div>
-        <a href="index.php?page=donate" class="tw-nav-item">
-            <i class="fas fa-heart" style="color: #E9197B;"></i>
-            <span>Support Rustnite</span>
-        </a>
-    </div>
+    <?php
+    endif; ?>
 </div>
 
+<div class="tw-sidebar-section" style="border-top: 1px solid #2D2D35; margin-top: auto;">
+    <div class="tw-sidebar-section-title">Donate ❤️</div>
+    <a href="index.php?page=donate" class="tw-nav-item">
+        <i class="fas fa-heart" style="color: #E9197B;"></i>
+        <span>Support Rustnite</span>
+    </a>
+</div>
+</div>
+<?php endif; ?>
+
 <!-- ====== MAIN CONTENT ====== -->
+<?php if (!($hide_chrome ?? false)): ?>
 <div class="tw-main">
     <!-- Top Bar -->
     <div class="tw-top-bar">
@@ -1097,6 +1085,9 @@
 
     <!-- Content -->
     <div class="tw-content">
+<?php else: ?>
+<div style="min-height:100vh;">
+<?php endif; ?>
         <!-- XP Bar (for logged in users) -->
         <?php if (isset($_SESSION["user_id"]) && isset($current_user)):
 
