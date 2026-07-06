@@ -286,6 +286,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
             break;
 
+        case "feed":
+            // Handle add comment (POST before header)
+            if (isset($_POST["add_comment"]) && isset($_SESSION["user_id"])) {
+                $post_id = (int) $_POST["post_id"];
+                $comment = sanitize($_POST["comment_content"] ?? "");
+                if (!empty($comment)) {
+                    try {
+                        $pdo->prepare(
+                            "INSERT INTO feed_comments (post_id, user_id, content) VALUES (?, ?, ?)",
+                        )->execute([$post_id, $_SESSION["user_id"], $comment]);
+                        $pdo->prepare(
+                            "UPDATE feed_posts SET comments_count = comments_count + 1 WHERE id = ?",
+                        )->execute([$post_id]);
+                    } catch (PDOException $e) {
+                    }
+                }
+                header("Location: index.php?page=feed&view=" . $post_id);
+                exit();
+            }
+            break;
+
         case "ai-tutor":
             // New chat
             if (isset($_POST["new_chat"]) && isset($_SESSION["user_id"])) {
@@ -327,6 +348,58 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 
+// Handle feed GET actions (must be before header output)
+if ($page === "feed" && isset($_SESSION["user_id"])) {
+    // Handle like
+    if (isset($_GET["like"])) {
+        $post_id = (int) $_GET["like"];
+        try {
+            $stmt = $pdo->prepare(
+                "SELECT id FROM feed_likes WHERE post_id = ? AND user_id = ?",
+            );
+            $stmt->execute([$post_id, $_SESSION["user_id"]]);
+            if (!$stmt->fetch()) {
+                $pdo->prepare(
+                    "INSERT INTO feed_likes (post_id, user_id) VALUES (?, ?)",
+                )->execute([$post_id, $_SESSION["user_id"]]);
+                $pdo->prepare(
+                    "UPDATE feed_posts SET likes_count = likes_count + 1 WHERE id = ?",
+                )->execute([$post_id]);
+            }
+        } catch (PDOException $e) {
+        }
+        header("Location: index.php?page=feed");
+        exit();
+    }
+    // Handle unlike
+    if (isset($_GET["unlike"])) {
+        $post_id = (int) $_GET["unlike"];
+        try {
+            $pdo->prepare(
+                "DELETE FROM feed_likes WHERE post_id = ? AND user_id = ?",
+            )->execute([$post_id, $_SESSION["user_id"]]);
+            $pdo->prepare(
+                "UPDATE feed_posts SET likes_count = GREATEST(0, likes_count - 1) WHERE id = ?",
+            )->execute([$post_id]);
+        } catch (PDOException $e) {
+        }
+        header("Location: index.php?page=feed");
+        exit();
+    }
+    // Handle delete post
+    if (isset($_GET["delete"]) && isset($_GET["confirm"])) {
+        $post_id = (int) $_GET["delete"];
+        try {
+            $pdo->prepare(
+                "DELETE FROM feed_posts WHERE id = ? AND user_id = ?",
+            )->execute([$post_id, $_SESSION["user_id"]]);
+        } catch (PDOException $e) {
+        }
+        header("Location: index.php?page=feed");
+        exit();
+    }
+}
+
 // Check if user is logged in for protected pages
 $protected_pages = [
     "dashboard",
@@ -339,6 +412,7 @@ $protected_pages = [
     "mini-game-play",
     "ai-tutor",
     "daily-challenge",
+    "feed",
 ];
 if (in_array($page, $protected_pages) && !isset($_SESSION["user_id"])) {
     header("Location: index.php?page=login");

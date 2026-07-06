@@ -3281,3 +3281,40 @@ function import_external_challenge($challenge)
 
     return ["action" => "created", "lesson_id" => $pdo->lastInsertId()];
 }
+function render_markdown($text) {
+    $text = htmlspecialchars($text);
+    // Code blocks (before other transformations)
+    $text = preg_replace('/```(\w+)?\s*([\s\S]*?)```/', '<pre class="code-block"><code>$2</code></pre>', $text);
+    // Inline code
+    $text = preg_replace('/`([^`]+)`/', '<code>$1</code>', $text);
+    // Headers
+    $text = preg_replace('/^### (.+)$/m', '<h3>$1</h3>', $text);
+    $text = preg_replace('/^## (.+)$/m', '<h2>$1</h2>', $text);
+    $text = preg_replace('/^# (.+)$/m', '<h1>$1</h1>', $text);
+    // Bold
+    $text = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $text);
+    // Italic
+    $text = preg_replace('/\*(.+?)\*/', '<em>$1</em>', $text);
+    // Links
+    $text = preg_replace('/\[([^\]]+)\]\(([^)]+)\)/', '<a href="$2" target="_blank">$1</a>', $text);
+    // Lists
+    $text = preg_replace('/^\- (.+)$/m', '<li>$1</li>', $text);
+    $text = preg_replace('/(<li>.*<\/li>\n?)+/s', '<ul>$0</ul>', $text);
+    // Blockquotes
+    $text = preg_replace('/^> (.+)$/m', '<blockquote>$1</blockquote>', $text);
+    // Horizontal rules
+    $text = preg_replace('/^---$/m', '<hr>', $text);
+    // Paragraphs (double newlines)
+    $paragraphs = explode("\n\n", $text);
+    $result = '';
+    foreach ($paragraphs as $p) {
+        $p = trim($p);
+        if (empty($p)) continue;
+        if (preg_match('/^<(h[1-3]|ul|ol|li|pre|blockquote|hr)/', $p)) {
+            $result .= $p . "\n";
+        } else {
+            $result .= '<p>' . nl2br($p) . "</p>\n";
+        }
+    }
+    return $result;
+}

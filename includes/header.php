@@ -466,6 +466,22 @@
             padding: 20px;
         }
 
+        /* ====== LESSON CONTENT (rendered markdown) ====== */
+        .lesson-content h1 { font-size: 1.5rem; font-weight: 800; color: #EFEFF1; margin: 1.5rem 0 0.75rem; }
+        .lesson-content h2 { font-size: 1.25rem; font-weight: 700; color: #EFEFF1; margin: 1.25rem 0 0.5rem; }
+        .lesson-content h3 { font-size: 1.1rem; font-weight: 600; color: #EFEFF1; margin: 1rem 0 0.5rem; }
+        .lesson-content p { margin: 0.75rem 0; line-height: 1.7; color: #ADADB8; }
+        .lesson-content strong { color: #EFEFF1; }
+        .lesson-content code { background: #0E0E10; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; color: #A970FF; border: 1px solid #2D2D35; }
+        .lesson-content pre.code-block { background: #0E0E10; border: 1px solid #2D2D35; border-radius: 8px; padding: 16px; overflow-x: auto; margin: 1rem 0; }
+        .lesson-content pre.code-block code { background: none; border: none; padding: 0; color: #ADADB8; font-size: 0.85rem; }
+        .lesson-content ul { margin: 0.75rem 0; padding-left: 1.5rem; }
+        .lesson-content li { color: #ADADB8; margin: 0.25rem 0; list-style: disc; }
+        .lesson-content blockquote { border-left: 3px solid #9147FF; padding: 0.5rem 1rem; margin: 1rem 0; background: rgba(145,71,255,0.05); border-radius: 0 8px 8px 0; color: #ADADB8; }
+        .lesson-content hr { border: none; border-top: 1px solid #2D2D35; margin: 1.5rem 0; }
+        .lesson-content a { color: #9147FF; text-decoration: underline; }
+        .lesson-content a:hover { color: #A970FF; }
+
         /* ====== BUTTONS ====== */
         .tw-btn {
             display: inline-flex;

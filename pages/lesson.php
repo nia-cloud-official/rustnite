@@ -177,14 +177,14 @@ $editor_lang = $monaco_languages[$lesson["language_slug"]] ?? "rust";
                     <h2 class="font-bold"><i class="fas fa-book-open mr-2" style="color:#9147FF;"></i> Lesson Content</h2>
                 </div>
                 <div class="tw-card-body">
-                    <div class="text-sm leading-relaxed whitespace-pre-line text-twitch-text"><?= htmlspecialchars(
+                    <div class="lesson-content text-sm leading-relaxed text-twitch-text"><?= render_markdown(
                         $lesson["content"],
                     ) ?></div>
 
                     <?php if (!empty($lesson["hints"])): ?>
                         <div class="mt-4 p-4 rounded-lg" style="background:rgba(145,71,255,0.1); border:1px solid rgba(145,71,255,0.2);">
                             <h3 class="font-bold mb-2" style="color:#A970FF;"><i class="fas fa-lightbulb mr-2"></i> Hints</h3>
-                            <div class="text-sm text-twitch-muted whitespace-pre-line"><?= htmlspecialchars(
+                            <div class="text-sm text-twitch-muted"><?= render_markdown(
                                 $lesson["hints"],
                             ) ?></div>
                         </div>
