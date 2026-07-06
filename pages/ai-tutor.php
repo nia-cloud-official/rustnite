@@ -110,7 +110,7 @@ if ($current_chat_id) {
                                 ] === "user"
                                     ? "background:#2D2D35;"
                                     : "" ?>">
-                                    <div style="font-size:13px; line-height:1.6; white-space:pre-wrap;"><?= htmlspecialchars(
+                                    <div style="font-size:13px; line-height:1.6;"><?= render_markdown(
                                         $msg["content"],
                                     ) ?></div>
                                 </div>
@@ -244,7 +244,7 @@ function sendMessage(e) {
         document.getElementById('typing-indicator')?.remove();
 
         if (data.success) {
-            addMessage('assistant', data.response);
+            addMessage('assistant', data.rendered || data.response);
             if (data.xp_earned) {
                 showToast(`+${data.xp_earned} XP for asking a question!`, 'success');
             }
@@ -281,7 +281,7 @@ function addMessage(role, content) {
         </div>
         <div style="max-width:80%; ${role === 'user' ? 'text-align:right;' : ''}">
             <div class="tw-card" style="display:inline-block; padding:12px 16px; ${role === 'user' ? 'background:#2D2D35;' : ''}">
-                <div style="font-size:13px; line-height:1.6; white-space:pre-wrap;">${escapeHtml(content)}</div>
+                <div style="font-size:13px; line-height:1.6;">${content}</div>
             </div>
         </div>
     `;

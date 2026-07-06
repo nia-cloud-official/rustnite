@@ -735,9 +735,12 @@ function ask_ai_tutor($chat_id, $user_id, $message)
         ];
     }
 
+    $rendered = render_markdown($response);
+
     return [
         "success" => true,
         "response" => $response,
+        "rendered" => $rendered,
         "code_blocks" => $blocks,
         "xp_earned" => XP_AI_TUTOR_QUESTION,
     ];
@@ -745,17 +748,18 @@ function ask_ai_tutor($chat_id, $user_id, $message)
 
 function generate_ai_response($context, $language)
 {
-    // Try the OpenCode API first if configured
+    // Try the OpenCode API
     if (defined("OPENCODE_API_KEY") && !empty(OPENCODE_API_KEY)) {
         $response = call_opencode_api($context, $language);
         if ($response !== null) {
             return $response;
         }
+        // API failed - return a clear error instead of canned response
+        return "I'm sorry, I couldn't reach the AI service. Please try again in a moment. If this persists, check that the API key is configured correctly.";
     }
 
-    // Fallback: Big Pickle AI built-in intelligence
-    // Only used when no API key is configured or API call fails
-    return generate_fallback_response($context, $language);
+    // No API key configured
+    return "The AI tutor requires an API key to be configured. Please set OPENCODE_API_KEY in config.php to enable AI responses.";
 }
 
 function call_opencode_api($context, $language)
@@ -791,8 +795,8 @@ function call_opencode_api($context, $language)
         "Content-Type: application/json",
         "Authorization: Bearer " . OPENCODE_API_KEY,
     ]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
 
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -3281,39 +3285,50 @@ function import_external_challenge($challenge)
 
     return ["action" => "created", "lesson_id" => $pdo->lastInsertId()];
 }
-function render_markdown($text) {
+function render_markdown($text)
+{
     $text = htmlspecialchars($text);
     // Code blocks (before other transformations)
-    $text = preg_replace('/```(\w+)?\s*([\s\S]*?)```/', '<pre class="code-block"><code>$2</code></pre>', $text);
+    $text = preg_replace(
+        "/```(\w+)?\s*([\s\S]*?)```/",
+        '<pre class="code-block"><code>$2</code></pre>',
+        $text,
+    );
     // Inline code
-    $text = preg_replace('/`([^`]+)`/', '<code>$1</code>', $text);
+    $text = preg_replace("/`([^`]+)`/", '<code>$1</code>', $text);
     // Headers
     $text = preg_replace('/^### (.+)$/m', '<h3>$1</h3>', $text);
     $text = preg_replace('/^## (.+)$/m', '<h2>$1</h2>', $text);
     $text = preg_replace('/^# (.+)$/m', '<h1>$1</h1>', $text);
     // Bold
-    $text = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $text);
+    $text = preg_replace("/\*\*(.+?)\*\*/", '<strong>$1</strong>', $text);
     // Italic
-    $text = preg_replace('/\*(.+?)\*/', '<em>$1</em>', $text);
+    $text = preg_replace("/\*(.+?)\*/", '<em>$1</em>', $text);
     // Links
-    $text = preg_replace('/\[([^\]]+)\]\(([^)]+)\)/', '<a href="$2" target="_blank">$1</a>', $text);
+    $text = preg_replace(
+        "/\[([^\]]+)\]\(([^)]+)\)/",
+        '<a href="$2" target="_blank">$1</a>',
+        $text,
+    );
     // Lists
     $text = preg_replace('/^\- (.+)$/m', '<li>$1</li>', $text);
     $text = preg_replace('/(<li>.*<\/li>\n?)+/s', '<ul>$0</ul>', $text);
     // Blockquotes
     $text = preg_replace('/^> (.+)$/m', '<blockquote>$1</blockquote>', $text);
     // Horizontal rules
-    $text = preg_replace('/^---$/m', '<hr>', $text);
+    $text = preg_replace('/^---$/m', "<hr>", $text);
     // Paragraphs (double newlines)
     $paragraphs = explode("\n\n", $text);
-    $result = '';
+    $result = "";
     foreach ($paragraphs as $p) {
         $p = trim($p);
-        if (empty($p)) continue;
-        if (preg_match('/^<(h[1-3]|ul|ol|li|pre|blockquote|hr)/', $p)) {
+        if (empty($p)) {
+            continue;
+        }
+        if (preg_match("/^<(h[1-3]|ul|ol|li|pre|blockquote|hr)/", $p)) {
             $result .= $p . "\n";
         } else {
-            $result .= '<p>' . nl2br($p) . "</p>\n";
+            $result .= "<p>" . nl2br($p) . "</p>\n";
         }
     }
     return $result;
