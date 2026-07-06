@@ -594,33 +594,22 @@
             animation: gradient-shift 8s ease infinite;
         }
 
-        /* ====== PARTICLE BACKGROUND ====== */
-        #particles-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        /* ====== SCAN LINE EFFECT ====== */
+        /* ====== SCAN LINE OVERLAY ====== */
         .scan-line-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none;
-            z-index: 9999;
             background: repeating-linear-gradient(
                 0deg,
                 transparent,
                 transparent 2px,
-                rgba(0, 0, 0, 0.03) 2px,
-                rgba(0, 0, 0, 0.03) 4px
+                rgba(145, 71, 255, 0.03) 2px,
+                rgba(145, 71, 255, 0.03) 4px
             );
+            pointer-events: none;
+            z-index: 5;
         }
 
         /* ====== LIVE INDICATOR ====== */
@@ -874,8 +863,7 @@
 <!-- Scan Line Overlay -->
 <div class="scan-line-overlay"></div>
 
-<!-- Particles Canvas -->
-<canvas id="particles-canvas"></canvas>
+
 
 <!-- Toast Notification Container -->
 <div class="toast-container" id="toast-container"></div>
@@ -987,6 +975,16 @@
     <div class="tw-sidebar-section">
         <div class="tw-sidebar-section-title">Social</div>
 
+        <a href="index.php?page=feed" class="tw-nav-item <?= ($_GET["page"] ??
+            "") ===
+        "feed"
+            ? "active"
+            : "" ?>">
+            <i class="fas fa-rss"></i>
+            <span>Feed</span>
+            <span class="nav-badge green">NEW</span>
+        </a>
+
         <a href="index.php?page=profile" class="tw-nav-item <?= ($_GET[
             "page"
         ] ??
@@ -1045,7 +1043,7 @@
                 </div>
 
                 <div class="tw-tooltip" data-tooltip="Daily Challenge">
-                    <button class="tw-icon-btn">
+                    <button class="tw-icon-btn" onclick="window.location='index.php?page=daily-challenge'">
                         <i class="fas fa-calendar-day"></i>
                     </button>
                 </div>

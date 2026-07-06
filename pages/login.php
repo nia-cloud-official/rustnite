@@ -58,6 +58,22 @@ if (
                         Don't have an account?
                         <a href="index.php?page=register" class="font-medium" style="color:#9147FF;">Create one</a>
                     </p>
+
+                    <?php if (
+                        defined("GITHUB_CLIENT_ID") &&
+                        !empty(GITHUB_CLIENT_ID)
+                    ): ?>
+                    <div style="margin-top:16px; border-top:1px solid #2D2D35; padding-top:16px;">
+                        <a href="https://github.com/login/oauth/authorize?client_id=<?= GITHUB_CLIENT_ID ?>&redirect_uri=<?= urlencode(
+    GITHUB_REDIRECT_URI,
+) ?>&scope=user:email"
+                           class="tw-btn tw-btn-block"
+                           style="background:#24292e; color:white; justify-content:center; border:1px solid #3A3A45;">
+                            <i class="fab fa-github"></i>
+                            Sign in with GitHub
+                        </a>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

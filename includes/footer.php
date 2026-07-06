@@ -79,98 +79,7 @@ document.querySelectorAll('.tw-nav-item').forEach(link => {
     });
 });
 
-// ====== PARTICLES BACKGROUND ======
-(function initParticles() {
-    const canvas = document.getElementById('particles-canvas');
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    let particles = [];
-    let mouseX = 0;
-    let mouseY = 0;
-
-    function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    }
-
-    resize();
-    window.addEventListener('resize', resize);
-
-    class Particle {
-        constructor() {
-            this.reset();
-        }
-
-        reset() {
-            this.x = Math.random() * canvas.width;
-            this.y = Math.random() * canvas.height;
-            this.size = Math.random() * 2 + 0.5;
-            this.speedX = (Math.random() - 0.5) * 0.5;
-            this.speedY = (Math.random() - 0.5) * 0.5;
-            this.opacity = Math.random() * 0.5 + 0.1;
-            this.pulse = Math.random() * Math.PI * 2;
-        }
-
-        update() {
-            this.pulse += 0.01;
-            this.x += this.speedX + (mouseX - canvas.width/2) * 0.0001;
-            this.y += this.speedY + (mouseY - canvas.height/2) * 0.0001;
-            this.currentOpacity = this.opacity * (0.5 + 0.5 * Math.sin(this.pulse));
-
-            if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
-                this.reset();
-            }
-        }
-
-        draw() {
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(145, 71, 255, ${this.currentOpacity})`;
-            ctx.fill();
-        }
-    }
-
-    for (let i = 0; i < 80; i++) {
-        particles.push(new Particle());
-    }
-
-    document.addEventListener('mousemove', (e) => {
-        mouseX = e.clientX;
-        mouseY = e.clientY;
-    });
-
-    function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Draw connections
-        for (let i = 0; i < particles.length; i++) {
-            for (let j = i + 1; j < particles.length; j++) {
-                const dx = particles[i].x - particles[j].x;
-                const dy = particles[i].y - particles[j].y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist < 150) {
-                    ctx.beginPath();
-                    ctx.moveTo(particles[i].x, particles[i].y);
-                    ctx.lineTo(particles[j].x, particles[j].y);
-                    ctx.strokeStyle = `rgba(145, 71, 255, ${0.1 * (1 - dist/150)})`;
-                    ctx.lineWidth = 0.5;
-                    ctx.stroke();
-                }
-            }
-        }
-
-        particles.forEach(p => {
-            p.update();
-            p.draw();
-        });
-
-        requestAnimationFrame(animate);
-    }
-
-    animate();
-})();
+// ====== PARTICLES BACKGROUND REMOVED ======
 
 // ====== GLOBAL SEARCH ======
 const searchInput = document.getElementById('global-search');
@@ -220,17 +129,86 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// ====== TOGGLE NOTIFICATIONS ======
+// ====== NOTIFICATIONS DROPDOWN ======
 function toggleNotifications() {
-    // Placeholder - will be implemented with a dropdown
-    showToast('Notifications coming soon!', 'info');
+    let panel = document.getElementById('notif-panel');
+    if (panel) {
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        return;
+    }
+
+    // Create panel
+    panel = document.createElement('div');
+    panel.id = 'notif-panel';
+    panel.style.cssText = 'position:fixed; top:60px; right:100px; width:360px; max-height:480px; background:#18181B; border:1px solid #3A3A45; border-radius:8px; z-index:9999; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,0.5); animation: slide-up 0.2s ease-out;';
+
+    panel.innerHTML = '<div style="padding:12px 16px; border-bottom:1px solid #2D2D35; display:flex; justify-content:space-between; align-items:center;">' +
+        '<span class="font-bold text-sm"><i class="fas fa-bell" style="color:#9147FF;"></i> Notifications</span>' +
+        '<button onclick="document.getElementById(\'notif-panel\').style.display=\'none\'" style="background:none;border:none;color:#ADADB8;cursor:pointer;">&times;</button>' +
+        '</div>' +
+        '<div id="notif-list" style="overflow-y:auto; max-height:400px; padding:8px;">' +
+        '<div style="text-align:center; padding:20px; color:#ADADB8; font-size:13px;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>' +
+        '</div>' +
+        '<div style="padding:8px 16px; border-top:1px solid #2D2D35; text-align:center;">' +
+        '<a href="index.php?page=notifications" class="text-xs text-twitch-purple" style="text-decoration:none;">View All</a>' +
+        '</div>';
+
+    document.body.appendChild(panel);
+
+    // Fetch notifications via AJAX
+    fetch('api/notifications.php')
+        .then(r => r.json())
+        .then(data => {
+            const list = document.getElementById('notif-list');
+            if (!data.notifications || data.notifications.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:20px; color:#ADADB8; font-size:13px;"><i class="fas fa-bell-slash" style="font-size:24px; margin-bottom:8px; display:block;"></i>No notifications yet</div>';
+                return;
+            }
+            list.innerHTML = data.notifications.map(n => {
+                const icons = { badge_earned: 'fa-award', level_up: 'fa-arrow-up', lesson_completed: 'fa-check', br_event: 'fa-crosshairs', mini_game: 'fa-gamepad', streak: 'fa-fire', follow: 'fa-user-plus', like: 'fa-heart' };
+                const icon = icons[n.type] || 'fa-bell';
+                const time = timeAgo(n.created_at);
+                return '<div class="notif-item" style="padding:10px 12px; border-radius:6px; cursor:pointer; display:flex; gap:10px; align-items:start;" onmouseover="this.style.background=\'#2D2D35\'" onmouseout="this.style.background=\'transparent\'" onclick="this.style.opacity=\'0.6\'">' +
+                    '<div style="width:32px; height:32px; border-radius:50%; background:rgba(145,71,255,0.1); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i class="fas ' + icon + '" style="color:#9147FF; font-size:12px;"></i></div>' +
+                    '<div style="flex:1;">' +
+                    '<div class="text-sm font-medium">' + escapeHtml(n.title) + '</div>' +
+                    '<div class="text-xs text-twitch-muted">' + escapeHtml(n.message) + '</div>' +
+                    '<div class="text-xs text-twitch-muted" style="margin-top:2px;">' + time + '</div>' +
+                    '</div></div>';
+            }).join('');
+        })
+        .catch(() => {
+            const list = document.getElementById('notif-list');
+            if (list) list.innerHTML = '<div style="text-align:center; padding:20px; color:#ADADB8;">Failed to load notifications</div>';
+        });
 }
 
+function timeAgo(dateStr) {
+    const now = new Date();
+    const date = new Date(dateStr);
+    const diff = Math.floor((now - date) / 1000);
+    if (diff < 60) return "just now";
+    if (diff < 3600) return Math.floor(diff/60) + "m ago";
+    if (diff < 86400) return Math.floor(diff/3600) + "h ago";
+    return Math.floor(diff/86400) + "d ago";
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Close notification panel on click outside
+document.addEventListener('click', function(e) {
+    const panel = document.getElementById('notif-panel');
+    if (panel && !panel.contains(e.target) && !e.target.closest('[onclick="toggleNotifications()"]')) {
+        panel.style.display = 'none';
+    }
+});
+
 // ====== CONSOLE EASTER EGG ======
-	console.log('%c🦀 Rustnite v<?= defined("APP_VERSION")
-     ? APP_VERSION
-     : "2.0.0" ?>', 'font-size:24px; font-weight:bold; color:#9147FF;');
-console.log('%cBattle-Royale Coding Arena', 'font-size:14px; color:#ADADB8;');
+console.log('%c🦀 Rustnite - Battle-Royale Coding Arena', 'font-size:24px; font-weight:bold; color:#9147FF;');
 console.log('%c🚀 Let\'s code like a legend!', 'font-size:12px; color:#00D95A;');
 </script>
 </body>

@@ -22,6 +22,9 @@ $allowed_pages = [
     "mini-game-play",
     "ai-tutor",
     "daily-challenge",
+    "feed",
+    "feed-post",
+    "notifications",
 ];
 
 if (!in_array($page, $allowed_pages)) {
@@ -33,10 +36,14 @@ if (!in_array($page, $allowed_pages)) {
 // Handle logout
 if ($page === "logout") {
     if (isset($_SESSION["user_id"])) {
-        $stmt = $pdo->prepare(
-            "UPDATE users SET is_online = FALSE WHERE id = ?",
-        );
-        $stmt->execute([$_SESSION["user_id"]]);
+        try {
+            $stmt = $pdo->prepare(
+                "UPDATE users SET is_online = FALSE WHERE id = ?",
+            );
+            $stmt->execute([$_SESSION["user_id"]]);
+        } catch (PDOException $e) {
+            // Column may not exist yet - ignore
+        }
     }
     session_destroy();
     header("Location: index.php");
@@ -47,6 +54,123 @@ if ($page === "logout") {
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     switch ($page) {
         case "login":
+            // Handle GitHub OAuth callback
+            if (isset($_GET["github_callback"])) {
+                $code = $_GET["code"] ?? "";
+                if (
+                    !empty($code) &&
+                    defined("GITHUB_CLIENT_ID") &&
+                    !empty(GITHUB_CLIENT_ID)
+                ) {
+                    try {
+                        // Exchange code for access token
+                        $token_url =
+                            "https://github.com/login/oauth/access_token";
+                        $ch = curl_init($token_url);
+                        curl_setopt($ch, CURLOPT_POST, true);
+                        curl_setopt(
+                            $ch,
+                            CURLOPT_POSTFIELDS,
+                            http_build_query([
+                                "client_id" => GITHUB_CLIENT_ID,
+                                "client_secret" => GITHUB_CLIENT_SECRET,
+                                "code" => $code,
+                            ]),
+                        );
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                            "Accept: application/json",
+                        ]);
+                        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+                        $token_data = json_decode(curl_exec($ch), true);
+                        curl_close($ch);
+                        $access_token = $token_data["access_token"] ?? "";
+
+                        if (!empty($access_token)) {
+                            // Fetch user info
+                            $ch = curl_init("https://api.github.com/user");
+                            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                                "Authorization: Bearer $access_token",
+                                "User-Agent: Rustnite/1.0",
+                            ]);
+                            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+                            $github_user = json_decode(curl_exec($ch), true);
+                            curl_close($ch);
+
+                            if (!empty($github_user["id"])) {
+                                $github_id = $github_user["id"];
+                                $github_email = $github_user["email"] ?? "";
+                                $github_login = $github_user["login"] ?? "";
+                                $github_avatar =
+                                    $github_user["avatar_url"] ?? "";
+
+                                // Find existing user by github_id or email
+                                $stmt = $pdo->prepare(
+                                    "SELECT * FROM users WHERE github_id = ? OR email = ?",
+                                );
+                                $stmt->execute([$github_id, $github_email]);
+                                $user = $stmt->fetch();
+
+                                if ($user) {
+                                    // Update github_id and avatar if missing
+                                    if (empty($user["github_id"])) {
+                                        $stmt = $pdo->prepare(
+                                            "UPDATE users SET github_id = ?, avatar_url = ? WHERE id = ?",
+                                        );
+                                        $stmt->execute([
+                                            $github_id,
+                                            $github_avatar,
+                                            $user["id"],
+                                        ]);
+                                    }
+                                    $_SESSION["user_id"] = $user["id"];
+                                    $_SESSION["username"] = $user["username"];
+                                } else {
+                                    // Create new user
+                                    $username = preg_replace(
+                                        "/[^a-zA-Z0-9_]/",
+                                        "_",
+                                        $github_login,
+                                    );
+                                    // Ensure unique username
+                                    $stmt = $pdo->prepare(
+                                        "SELECT id FROM users WHERE username = ?",
+                                    );
+                                    $stmt->execute([$username]);
+                                    if ($stmt->fetch()) {
+                                        $username .=
+                                            "_" . substr($github_id, 0, 4);
+                                    }
+                                    $random_pass = password_hash(
+                                        bin2hex(random_bytes(16)),
+                                        PASSWORD_DEFAULT,
+                                    );
+                                    $stmt = $pdo->prepare(
+                                        "INSERT INTO users (username, email, github_id, avatar_url, password, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
+                                    );
+                                    $stmt->execute([
+                                        $username,
+                                        $github_email,
+                                        $github_id,
+                                        $github_avatar,
+                                        $random_pass,
+                                    ]);
+                                    $user_id = $pdo->lastInsertId();
+                                    $_SESSION["user_id"] = $user_id;
+                                    $_SESSION["username"] = $username;
+                                }
+
+                                header("Location: index.php?page=dashboard");
+                                exit();
+                            }
+                        }
+                    } catch (Exception $e) {
+                        // Fall through to normal login
+                    }
+                }
+            }
+
             if (isset($_POST["username"]) && isset($_POST["password"])) {
                 $username = sanitize($_POST["username"]);
                 $password = $_POST["password"];
@@ -66,10 +190,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         $_SESSION["username"] = $user["username"];
 
                         // Update online status
-                        $stmt = $pdo->prepare(
-                            "UPDATE users SET is_online = TRUE WHERE id = ?",
-                        );
-                        $stmt->execute([$user["id"]]);
+                        try {
+                            $stmt = $pdo->prepare(
+                                "UPDATE users SET is_online = TRUE WHERE id = ?",
+                            );
+                            $stmt->execute([$user["id"]]);
+                        } catch (PDOException $e) {
+                            // Column may not exist yet
+                        }
 
                         $redirect = $_GET["redirect"] ?? "dashboard";
                         header("Location: index.php?page={$redirect}");
@@ -220,7 +348,8 @@ if (in_array($page, $protected_pages) && !isset($_SESSION["user_id"])) {
 // Redirect logged-in users away from auth pages (must be before header output)
 if (
     ($page === "login" || $page === "register") &&
-    isset($_SESSION["user_id"])
+    isset($_SESSION["user_id"]) &&
+    !isset($_GET["github_callback"])
 ) {
     header("Location: index.php?page=dashboard");
     exit();

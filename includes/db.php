@@ -277,7 +277,63 @@ $migrations = [
     "ALTER TABLE users ADD COLUMN preferred_language INT DEFAULT 1",
     "ALTER TABLE users ADD COLUMN show_online_status BOOLEAN DEFAULT TRUE",
     "ALTER TABLE lessons ADD COLUMN language_id INT DEFAULT 1",
+    "ALTER TABLE lessons ADD COLUMN starter_code TEXT DEFAULT NULL",
+    "ALTER TABLE lessons ADD COLUMN code_template TEXT DEFAULT NULL",
+    "ALTER TABLE lessons ADD COLUMN expected_output TEXT DEFAULT NULL",
+    "ALTER TABLE lessons ADD COLUMN test_cases JSON DEFAULT NULL",
+    "ALTER TABLE lessons ADD COLUMN hints TEXT DEFAULT NULL",
+    "ALTER TABLE lessons ADD COLUMN category VARCHAR(50) DEFAULT 'basics'",
+    "ALTER TABLE lessons ADD COLUMN order_num INT DEFAULT 0",
+    "ALTER TABLE daily_challenges ADD COLUMN starter_code TEXT DEFAULT NULL",
+    "ALTER TABLE daily_challenges ADD COLUMN test_cases JSON DEFAULT NULL",
+    "ALTER TABLE daily_challenges ADD COLUMN bonus_xp INT DEFAULT 50",
+    "ALTER TABLE daily_challenges ADD COLUMN challenge_type ENUM('coding', 'debugging', 'optimization', 'algorithm') DEFAULT 'coding'",
+    "ALTER TABLE users ADD COLUMN github_id VARCHAR(255) DEFAULT NULL",
+    "ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500) DEFAULT NULL",
 ];
+
+// Feed / Community table
+$pdo->exec("
+CREATE TABLE IF NOT EXISTS feed_posts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    type ENUM('post', 'question', 'blog', 'idea', 'share') DEFAULT 'post',
+    title VARCHAR(255) DEFAULT NULL,
+    content TEXT NOT NULL,
+    code_snippet TEXT DEFAULT NULL,
+    language_slug VARCHAR(20) DEFAULT NULL,
+    tags VARCHAR(500) DEFAULT NULL,
+    likes_count INT DEFAULT 0,
+    comments_count INT DEFAULT 0,
+    is_pinned BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user (user_id),
+    INDEX idx_created (created_at),
+    INDEX idx_type (type)
+);
+
+CREATE TABLE IF NOT EXISTS feed_comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id INT NOT NULL,
+    user_id INT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES feed_posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS feed_likes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id INT NOT NULL,
+    user_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES feed_posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_feed_like (post_id, user_id)
+);
+");
 
 foreach ($migrations as $sql) {
     try {

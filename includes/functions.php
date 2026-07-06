@@ -816,96 +816,157 @@ function call_opencode_api($context, $language)
 function generate_fallback_response($context, $language)
 {
     $lower_context = strtolower($context);
+    $trimmed = trim(
+        str_replace(["User: ", "Assistant: ", "\n"], " ", $lower_context),
+    );
 
+    // Detect question type
+    $is_greeting =
+        preg_match("/\b(hi|hello|hey|sup|howdy|yo|\g{d})\b/", $trimmed) &&
+        strlen($trimmed) < 20;
     $is_explanation = preg_match(
-        "/\b(what is|explain|how does|tell me about|define|describe)\b/",
-        $lower_context,
+        "/\b(what is|explain|how does|tell me about|define|describe|what are|what's|how do)\b/",
+        $trimmed,
     );
     $is_help_with_code = preg_match(
-        "/\b(help|fix|debug|error|bug|wrong|issue|not working)\b/",
-        $lower_context,
+        "/\b(help|fix|debug|error|bug|wrong|issue|not working|broken|crash)\b/",
+        $trimmed,
     );
     $is_example = preg_match(
-        "/\b(example|show me|demonstrate|sample)\b/",
-        $lower_context,
+        "/\b(example|show me|demonstrate|sample|snippet)\b/",
+        $trimmed,
     );
-    $is_best_practice = preg_match(
-        "/\b(best practice|style|convention|idiomatic|proper)\b/",
-        $lower_context,
+    $is_question = preg_match(
+        "/\?\s*$|\b(how|why|when|where|which|can you|could you|would you)\b/",
+        $trimmed,
+    );
+    $is_concept = preg_match(
+        "/\b(variable|function|class|loop|array|string|int|bool|null|object|method|property|inheritance|polymorphism|recursion|algorithm)\b/",
+        $trimmed,
     );
     $is_mini_game_create = preg_match(
         "/\b(create|generate|make|new)\b.*\b(mini.game|game|challenge)\b/",
-        $lower_context,
+        $trimmed,
+    );
+    $is_language_question = preg_match(
+        "/\b(rust|python|javascript|typescript|go|java|c\+\+|c\s*language)\b/",
+        $trimmed,
     );
 
     preg_match('/```(\w+)?\n(.*?)```/s', $context, $user_code);
     $has_code = !empty($user_code);
 
+    // Extract the actual user question (remove system prompt)
+    $parts = explode("User: ", $context);
+    $user_question = end($parts);
+    $user_question = preg_replace("/\nAssistant:.*$/s", "", $user_question);
+    $user_question = trim($user_question);
+
     $response = "";
 
-    if ($is_help_with_code && $has_code) {
-        $response =
-            "I can see the issue! Here's what's going on and how to fix it:\n\n";
-        $response .= "**Problem Analysis:**\n";
+    if ($is_greeting) {
+        $greetings = [
+            "Hey there! \ud83d\udc4b Ready to write some {$language}? What can I help you with today?",
+            "Hello! \ud83d\ude80 I'm Big Pickle, your coding tutor. Ask me anything about {$language}!",
+            "Hi! \ud83c\udf89 What {$language} question can I help you tackle today?",
+        ];
+        $response = $greetings[array_rand($greetings)];
+    } elseif ($is_help_with_code && $has_code) {
+        $code = $user_code[2] ?? "";
+        $lines = explode("\n", $code);
+        $line_count = count($lines);
+        $response = "I see you've shared some code (\u2248{$line_count} lines). Let me help you debug it:\n\n";
+        $response .= "**What I'm looking at:**\n```{$language}\n{$code}\n```\n\n";
+        $response .= "**Common things to check in {$language}:**\n";
+        $lang_checks = [
+            "rust" =>
+                "- Ownership/borrowing rules\n- Semicolons and curly braces\n- Type annotations\n- Pattern matching exhaustiveness",
+            "python" =>
+                "- Indentation (4 spaces)\n- Colon after if/for/def\n- Import statements\n- Variable scope",
+            "javascript" =>
+                "- Semicolons and braces\n- Async/await handling\n- 'this' context\n- Array/object destructuring",
+            "typescript" =>
+                "- Type annotations\n- Interface vs type\n- Strict null checks\n- Generic constraints",
+            "go" =>
+                "- Package declarations\n- Error handling\n- Goroutine synchronization\n- Interface satisfaction",
+            "java" =>
+                "- Class/method declarations\n- Exception handling\n- Generic type parameters\n- Access modifiers",
+            "cpp" =>
+                "- Memory management\n- Header includes\n- Template syntax\n- Destructor/virtual rules",
+            "c" =>
+                "- Pointer arithmetic\n- Memory allocation\n- Header includes\n- Buffer sizes",
+        ];
+        $response .= $lang_checks[$language] ?? $lang_checks["rust"];
         $response .=
-            "Looking at your code, there are a few things we need to address:\n\n";
-        $response .=
-            "1. **Syntax Check**: Make sure all brackets, parentheses, and semicolons are properly placed\n";
-        $response .=
-            "2. **Logic Review**: Let's trace through the execution step by step\n";
-        $response .=
-            "3. **Type Verification**: Ensure all variables have the correct types\n\n";
-        $response .= "**Fixed Version:**\n";
-        $response .= "```{$language}\n";
-        $response .=
-            "// Here's a corrected version with comments explaining the changes\n";
-        $response .= "// The main issue was...\n";
-        $response .= "```\n\n";
-        $response .= "**Key Takeaways:**\n";
-        $response .= "- Always initialize variables before using them\n";
-        $response .= "- Check your loop conditions carefully\n";
-        $response .= "- Use proper error handling for edge cases\n\n";
-        $response .=
-            "Try implementing these changes and run your code again! 💪";
+            "\n\nCould you tell me what error you're seeing or what behavior is unexpected? That'll help me give a more specific fix!";
     } elseif ($is_mini_game_create) {
-        $response = "🎮 **Mini-Game Creation!**\n\n";
-        $response .= "I can help you create coding mini-games! Here's how:\n\n";
-        $response .=
-            "To generate a new mini-game, go to the **Mini-Games Arena** and click the **AI Generate** button.\n\n";
-        $response .= "You can choose:\n";
-        $response .=
-            "- **Language**: Rust, Python, JavaScript, TypeScript, Go, Java, C++, or C\n";
-        $response .=
-            "- **Game Type**: Syntax Speed, Bug Hunt, Output Prediction, or Code Race\n";
-        $response .=
-            "- **Difficulty**: Beginner, Intermediate, or Advanced\n\n";
-        $response .=
-            "The AI will create a brand new game with fresh questions and challenges! 🚀\n\n";
-        $response .= "```{$language}\n";
-        $response .= "// Generate it from the Mini-Games page!\n";
-        $response .= "```";
+        $response = "\ud83c\udfae **Mini-Game Creator**\n\nI'll help you make a coding mini-game! Head to the **Mini-Games Arena** and click **AI Generate** to create a custom game. You can pick language, type (Syntax Speed, Bug Hunt, Output Prediction, Code Race), and difficulty. The AI will build it with fresh challenges specific to {$language}!";
+    } elseif ($is_explanation || $is_concept || $is_question || $is_example) {
+        // Extract key concept from question
+        $concepts = [
+            "variable" => [
+                "Variables store data in memory. In {$language}, you declare them with specific syntax. They can be mutable (changeable) or immutable (fixed).",
+                "```{$language}\n// Example:\nlet x = 5; // immutable\nlet mut y = 10; // mutable\n```",
+            ],
+            "function" => [
+                "Functions are reusable blocks of code. They take inputs (parameters), perform operations, and return outputs.",
+                "```{$language}\n// Function pattern:\nfn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n```",
+            ],
+            "class" => [
+                "Classes are blueprints for creating objects. They encapsulate data and behavior together.",
+                "```{$language}\n// Class pattern varies by language\n```",
+            ],
+            "loop" => [
+                "Loops let you repeat code multiple times. Common types: for, while, and loop.",
+                "```{$language}\n// Loop example\nfor i in 0..5 {\n    println!(\"{} \", i);\n}\n```",
+            ],
+            "array" => [
+                "Arrays store multiple values of the same type in sequence. They're zero-indexed and fixed-size.",
+                "```{$language}\n// Array example\nlet arr = [1, 2, 3, 4, 5];\n```",
+            ],
+            "string" => [
+                "Strings hold text data. Different languages handle strings differently - some as objects, others as character arrays.",
+                "```{$language}\n// String handling varies by language\n```",
+            ],
+        ];
+
+        $found = false;
+        foreach ($concepts as $keyword => $info) {
+            if (strpos($trimmed, $keyword) !== false) {
+                $response = "**{$keyword}**\n\n{$info[0]}\n\n{$info[1]}\n\nWant me to go deeper into any specific aspect?";
+                $found = true;
+                break;
+            }
+        }
+
+        if (!$found) {
+            $response = "Great question about {$language}! \n\nHere's what I can tell you:\n\n";
+            $response .= get_language_fact($language) . "\n\n";
+            $response .=
+                "Could you be more specific about what you'd like to learn? I can help with:\n";
+            $response .=
+                "- **Syntax** \u2014 How to write specific constructs\n";
+            $response .=
+                "- **Concepts** \u2014 Variables, functions, types, etc.\n";
+            $response .= "- **Debugging** \u2014 Fix errors in your code\n";
+            $response .= "- **Best practices** \u2014 Idiomatic patterns\n\n";
+            $response .= "Just paste your code or ask away! \ud83d\ude80";
+        }
     } else {
-        $response =
-            "Thanks for your question! Let me help you understand this better:\n\n";
-        $response .= "**Quick Answer:**\n";
-        $response .= get_language_fact($language) . "\n\n";
-        $response .= "**Deeper Dive:**\n";
+        $response = "Hey! I'm Big Pickle \ud83e\udd0d\n\n";
+        $response .= "I can help you with:\n";
         $response .=
-            "To really understand this concept, let's break it down:\n\n";
+            "- \ud83d\udcdd **Explaining concepts** \u2014 \"What is a closure in Rust?\"\n";
         $response .=
-            "1. **Core Idea**: Every programming concept builds on fundamental principles\n";
+            "- \ud83d\udee1\ufe0f **Debugging code** \u2014 Paste your code and I'll help fix it\n";
         $response .=
-            "2. **Practical Application**: The best way to learn is by doing\n";
+            "- \ud83d\udca1 **Code examples** \u2014 \"Show me a linked list in Go\"\n";
         $response .=
-            "3. **Common Pitfalls**: Here's what to watch out for...\n\n";
-        $response .= "```{$language}\n";
-        $response .= "// Example to illustrate\n";
-        $response .= "// Try this code and see what happens!\n";
-        $response .= "```\n\n";
-        $response .=
-            "Would you like me to elaborate on any part of this? I can also provide more examples or help with specific code! 🎯";
+            "- \ud83c\udfae **Mini-games** \u2014 Ask me to create a coding game\n\n";
+        $response .= "Current language: **{$language}**. What would you like to learn?";
     }
 
+    // Always award XP for engaging
     return $response;
 }
 
