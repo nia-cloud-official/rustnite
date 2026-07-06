@@ -2732,8 +2732,6 @@ function build_lesson_content($lang, $difficulty, $topic)
 
 function get_code_examples($language, $topic, $difficulty)
 {
-    // AI-powered code examples per language/topic - these are templates
-    // that generate realistic, compilable code examples
     $examples = [
         "rust" => [
             "Variables & Mutability" => [

@@ -1,72 +1,52 @@
 # Rustnite
 
-A modern coding platform inspired by competitive gaming, where developers improve their skills through interactive lessons, coding challenges, multiplayer competitions, and AI-assisted learning.
-
----
-
-## Overview
-
-Rustnite combines structured learning, competitive programming, and AI-powered assistance into a single platform. Users earn experience, unlock achievements, compete against other developers, and practice across multiple programming languages.
+A multi-language battle-royale coding arena inspired by Twitch. Learn, compete, and level up across 8 programming languages with AI-powered lessons, real compilers, and community features.
 
 ---
 
 ## Features
 
-### Coding Arena
-
-- Competitive coding challenges
-- Multiplayer battle royale matches
+### Battle Royale Arena
+- Real-time coding competitions
+- Multiplayer matches (solo, duo, squad)
 - Language-specific leaderboards
-- Experience and progression system
+- XP and leveling system
 
-### AI Learning
-
-- AI-powered coding tutor
-- Dynamic lesson generation
-- AI-generated coding challenges
+### AI Learning (Powered by OpenCode Big Pickle)
+- AI coding tutor with markdown responses
+- Dynamic lesson generation per language
+- Auto-generated coding exercises
 - AI-generated mini-games
+- Automatic lesson content when none exist
 
-### Supported Languages
-
-- Rust
-- Python
-- JavaScript
-- TypeScript
-- Go
-- Java
-- C++
-- C
+### 8 Supported Languages
+- Rust, Python, JavaScript, TypeScript, Go, Java, C++, C
 
 ### Gamification
-
-- XP and leveling
-- Achievement system
+- XP and leveling system
+- Achievement badges
 - Daily challenges
 - Login streaks
 - Global and language-specific leaderboards
 
 ### Mini Games
-
-- Code Rush
-- Bug Squasher
-- Syntax Sprint
-- Pattern Match
+- Syntax Speed — Type correct syntax as fast as possible
+- Bug Hunt — Find and fix bugs in code
+- Output Prediction — Predict code output
+- Code Race — Race to complete code
 
 ### Community
+- Feed page for posts, questions, blogs, ideas
+- Like and comment system
+- User profiles with stats
+- Notification system
+- GitHub OAuth login
 
-- User profiles
-- Developer feed
-- Code sharing
-- Follow system
-- Real-time notifications
-
-### Developer Experience
-
-- Monaco Editor integration
-- Real code execution
-- Syntax highlighting
-- Code formatting and linting
-- GitHub OAuth authentication
+### Code Editor
+- Monaco Editor with language-specific syntax highlighting
+- Real code execution via Piston API
+- Code linting and formatting
+- Multi-language support
 
 ---
 
@@ -78,7 +58,7 @@ Rustnite combines structured learning, competitive programming, and AI-powered a
 | Database | MariaDB / MySQL |
 | Frontend | Tailwind CSS |
 | Editor | Monaco Editor |
-| AI | OpenCode Big Pickle |
+| AI | OpenCode Big Pickle (`big-pickle`) |
 | Authentication | Email/Password, GitHub OAuth |
 | Hosting | Wasmer Edge |
 
@@ -118,77 +98,50 @@ Configure your OpenCode API key.
 define('OPENCODE_API_KEY', 'your-api-key');
 ```
 
-(Optional) Configure GitHub OAuth credentials.
+Configure GitHub OAuth credentials.
 
-Start your web server and open the application in your browser.
+```php
+define('GITHUB_CLIENT_ID', 'your-client-id');
+define('GITHUB_CLIENT_SECRET', 'your-client-secret');
+```
+
+Point your web server to the `rustnite/` directory and open the app in your browser. The database schema and tables are created automatically on first load.
 
 ---
 
-## AI Integration
+## API Integration
 
-Rustnite integrates the OpenCode Zen API using the **Big Pickle** model to provide:
+Rustnite uses the OpenCode Zen API (`https://opencode.ai/zen/v1/chat/completions`) with the **big-pickle** model for:
 
-- AI tutoring
-- Lesson generation
-- Challenge generation
-- Mini-game generation
-- Context-aware coding assistance
+- AI tutoring and code explanations
+- Dynamic lesson content generation
+- Coding exercise generation
+- Mini-game creation
 
 ---
 
 ## Database
 
-Core tables include:
-
-- users
-- lessons
-- user_progress
-- mini_games
-- mini_game_scores
-- daily_challenges
-- notifications
-- feed_posts
-- badges
-- battle_royale tables
-
-Database migrations are handled automatically during application startup.
+Tables are auto-created by `includes/db.php` on first page load. Migrations for new columns run automatically on each request.
 
 ---
 
-## Roadmap
+## Configuration
 
-- Real-time multiplayer battles
-- Team competitions
-- Tournament mode
-- Custom avatars
-- Mobile applications
-- Additional programming languages
+All settings in `config.php`:
 
----
-
-## Contributing
-
-Contributions are welcome.
-
-1. Fork the repository.
-2. Create a feature branch.
-3. Commit your changes.
-4. Push your branch.
-5. Open a Pull Request.
+| Key | Description |
+|-----|-------------|
+| `OPENCODE_API_KEY` | OpenCode Big Pickle API key |
+| `GITHUB_CLIENT_ID` | GitHub OAuth App client ID |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth App client secret |
+| `AI_TUTOR_ENABLED` | Enable/disable AI tutor |
+| `AI_TUTOR_MODEL` | Model ID (`big-pickle`) |
+| `AI_TUTOR_MAX_TOKENS` | Max tokens per response |
+| `AI_TUTOR_TEMPERATURE` | Response creativity (0.0-1.0) |
 
 ---
 
 ## License
 
 This project is licensed under the MIT License.
-
-See the `LICENSE` file for details.
-
----
-
-## Acknowledgements
-
-- OpenCode
-- Monaco Editor
-- Tailwind CSS
-- Font Awesome

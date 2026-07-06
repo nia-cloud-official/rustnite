@@ -1050,8 +1050,7 @@
                 </div>
 
                 <div class="tw-user-menu" onclick="window.location='index.php?page=profile'">
-                    <div class="tw-avatar <?= $current_user["is_online"] ??
-                    false
+                    <div class="tw-avatar <?= !empty($current_user["is_online"])
                         ? "online"
                         : "" ?>">
                         <?= get_avatar_letter($current_user["username"]) ?>

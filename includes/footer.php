@@ -8,9 +8,7 @@
 <!-- Mobile Overlay -->
 <div id="mobile-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:99;" onclick="toggleMobileSidebar()"></div>
 
-<!-- ====== GLOBAL JAVASCRIPT ====== -->
 <script>
-// ====== NOTIFICATION SYSTEM ======
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -39,7 +37,7 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 
-// ====== CONFETTI SYSTEM ======
+
 function fireConfetti(count = 50) {
     const colors = ['#9147FF', '#E9197B', '#00D95A', '#FF6B35', '#A970FF', '#FFD700'];
 
@@ -60,7 +58,7 @@ function fireConfetti(count = 50) {
     }
 }
 
-// ====== MOBILE SIDEBAR ======
+
 function toggleMobileSidebar() {
     const sidebar = document.getElementById('main-sidebar');
     const overlay = document.getElementById('mobile-overlay');
@@ -83,9 +81,9 @@ document.querySelectorAll('.tw-nav-item').forEach(link => {
     });
 });
 
-// ====== PARTICLES BACKGROUND REMOVED ======
 
-// ====== GLOBAL SEARCH ======
+
+
 const searchInput = document.getElementById('global-search');
 if (searchInput) {
     searchInput.addEventListener('keypress', function(e) {
@@ -98,7 +96,7 @@ if (searchInput) {
     });
 }
 
-// ====== LIVE XP UPDATES ======
+
 function updateXPBar(newXP, newLevel) {
     const xpBar = document.querySelector('.xp-bar');
     const levelDisplay = document.querySelector('.tw-user-info .xp');
@@ -112,7 +110,7 @@ function updateXPBar(newXP, newLevel) {
     levelDisplay.textContent = `Level ${newLevel} · ${newXP.toLocaleString()} XP`;
 }
 
-// ====== INTERACTIVE ANIMATIONS ======
+
 document.addEventListener('DOMContentLoaded', function() {
     // Animate cards on scroll
     const cards = document.querySelectorAll('.tw-card');
@@ -133,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// ====== NOTIFICATIONS DROPDOWN ======
+
 function toggleNotifications() {
     let panel = document.getElementById('notif-panel');
     if (panel) {
@@ -211,7 +209,7 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// ====== CONSOLE EASTER EGG ======
+
 console.log('%c🦀 Rustnite - Battle-Royale Coding Arena', 'font-size:24px; font-weight:bold; color:#9147FF;');
 console.log('%c🚀 Let\'s code like a legend!', 'font-size:12px; color:#00D95A;');
 </script>

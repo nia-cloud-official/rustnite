@@ -253,7 +253,7 @@ $key
                             <?php endif; ?>
 
                             <!-- Content -->
-                            <div class="text-sm text-twitch-text mb-3" style="line-height:1.6; white-space:pre-wrap;"><?= htmlspecialchars(
+                            <div class="text-sm text-twitch-text mb-3 lesson-content"><?= render_markdown(
                                 $post["content"],
                             ) ?></div>
 

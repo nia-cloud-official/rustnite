@@ -162,12 +162,16 @@ if (
                             <span class="text-xs px-2 py-1 rounded-full" style="background:<?= $daily[
                                 "language_color"
                             ] ?>20; color:<?= $daily["language_color"] ?>;">
-                                <i class="<?= $languages[
-                                    array_search(
-                                        $daily["language_id"],
-                                        array_column($languages, "id"),
-                                    )
-                                ]["icon"] ?? "fas fa-code" ?>"></i>
+                                <i class="<?php
+                                $lang_icon = "fas fa-code";
+                                foreach ($languages as $l) {
+                                    if ($l["id"] == $daily["language_id"]) {
+                                        $lang_icon = $l["icon"];
+                                        break;
+                                    }
+                                }
+                                echo $lang_icon;
+                                ?>"></i>
                                 <?= htmlspecialchars($daily["language_name"]) ?>
                             </span>
                             <span class="text-xs px-2 py-1 rounded-full font-medium
