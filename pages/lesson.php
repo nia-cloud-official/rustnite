@@ -25,8 +25,8 @@ if (!$lesson) {
     exit();
 }
 
-// FIX: Existing lessons may have Rust starter code stored from the old buggy generator.
-// If the lesson's language is NOT Rust but the stored code contains Rust code, replace it.
+// FIX: Existing lessons may have Rust code stored from the old buggy generator.
+// If the lesson's language is NOT Rust but the stored code contains Rust, replace it.
 $lesson_lang = strtolower($lesson["language_slug"] ?? "rust");
 if ($lesson_lang !== "rust") {
     $rust_patterns = [
@@ -35,30 +35,46 @@ if ($lesson_lang !== "rust") {
         "rustc",
         "// Write your code here",
     ];
-    foreach (["starter_code", "code_template"] as $field) {
+
+    // Detect if any field has Rust code
+    $has_rust = false;
+    foreach (["starter_code", "code_template", "content"] as $field) {
         if (!empty($lesson[$field])) {
-            $is_rust = false;
             foreach ($rust_patterns as $pat) {
                 if (str_contains($lesson[$field], $pat)) {
-                    $is_rust = true;
-                    break;
+                    $has_rust = true;
+                    break 2;
                 }
             }
-            if ($is_rust) {
-                $fallback_ex = get_language_fallback_exercise(
-                    $lesson_lang,
-                    $lesson["title"] ?? "",
-                );
-                $fallback_example = get_language_fallback_example(
-                    $lesson_lang,
-                    $lesson["title"] ?? "",
-                );
-                if ($field === "starter_code") {
-                    $lesson[$field] = $fallback_ex["starter_code"];
-                } else {
-                    $lesson[$field] = $fallback_example["template"];
-                }
-            }
+        }
+    }
+
+    if ($has_rust) {
+        // Regenerate content, starter_code and code_template for this lesson
+        // Extract topic from title (format: "Language: Topic")
+        $title_parts = explode(": ", $lesson["title"] ?? "");
+        $topic =
+            count($title_parts) > 1
+                ? trim($title_parts[1])
+                : $lesson["title"] ?? "Programming";
+        $diff = $lesson["difficulty"] ?? "beginner";
+        $lang_info = get_language_by_slug($lesson_lang);
+        if ($lang_info) {
+            $new_content = build_lesson_content($lang_info, $diff, $topic);
+            $lesson["content"] = $new_content["content"];
+            $lesson["starter_code"] = $new_content["starter_code"];
+            $lesson["code_template"] = $new_content["code_template"];
+            $lesson["expected_output"] = $new_content["expected_output"];
+            $lesson["hints"] = $new_content["hints"];
+        } else {
+            // Fallback: just fix starter_code and code_template
+            $fallback_ex = get_language_fallback_exercise($lesson_lang, $topic);
+            $fallback_example = get_language_fallback_example(
+                $lesson_lang,
+                $topic,
+            );
+            $lesson["starter_code"] = $fallback_ex["starter_code"];
+            $lesson["code_template"] = $fallback_example["template"];
         }
     }
 }
