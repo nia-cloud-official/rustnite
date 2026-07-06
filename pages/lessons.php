@@ -34,14 +34,13 @@ if (!empty($search_query)) {
     $params[] = "%{$search_query}%";
 }
 
-$sql .= " ORDER BY l.language_id, l.order_num ASC";
+$sql .= " ORDER BY l.order_num ASC";
 
 try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $lessons = $stmt->fetchAll();
 } catch (PDOException $e) {
-    // Fallback if language_id column doesn't exist
     $sql = "
         SELECT l.*, lang.name as language_name, lang.slug as language_slug,
                lang.color as language_color, lang.icon as language_icon,

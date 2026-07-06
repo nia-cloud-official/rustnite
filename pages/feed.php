@@ -258,7 +258,7 @@ $type
                 $post["comments_count"],
                 $post["comments_count_real"],
             );
-            $post_content = htmlspecialchars($post["content"]);
+            $post_content = htmlspecialchars($post["content"], ENT_NOQUOTES, "UTF-8");
             $post_content = preg_replace(
                 "/\b(https?:\/\/\S+)\b/",
                 '<a href="$1" target="_blank" style="color:#9147FF;">$1</a>',
