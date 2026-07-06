@@ -27,6 +27,12 @@ $allowed_pages = [
     "notifications",
 ];
 
+// Redirect home to dashboard for logged in users
+if ($page === "home" && isset($_SESSION["user_id"])) {
+    header("Location: index.php?page=dashboard");
+    exit();
+}
+
 if (!in_array($page, $allowed_pages)) {
     header("Location: index.php?page=dashboard");
     exit();

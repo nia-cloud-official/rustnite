@@ -123,15 +123,8 @@ foreach ($restricted_patterns as $pattern) {
 
 $result = execute_code($code, $lang);
 
-if ($result["success"]) {
-    ob_clean();
-    echo json_encode($result);
-    exit();
-}
-
-$sim_result = simulate_execution($code, $lesson_id, $lang);
 ob_clean();
-echo json_encode($sim_result);
+echo json_encode($result);
 exit();
 
 function get_restricted_patterns($language)
@@ -207,21 +200,33 @@ function get_restricted_patterns($language)
 
 function execute_code($code, $lang)
 {
+    // Try Piston API first (multi-language support)
+    $result = execute_with_piston($code, $lang);
+    if ($result["success"]) {
+        return $result;
+    }
+
+    // For Rust, try the Rust Playground
     if ($lang["slug"] === "rust") {
         $result = execute_with_playground($code);
         if ($result["success"]) {
             return $result;
         }
     }
-    $result = execute_with_piston($code, $lang);
-    if ($result["success"]) {
-        return $result;
-    }
+
+    // Try Docker if available
     $result = execute_with_docker($code, $lang);
     if ($result["success"]) {
         return $result;
     }
-    return ["success" => false];
+
+    return [
+        "success" => false,
+        "output" => "",
+        "stderr" =>
+            "Code execution unavailable. The execution service could not be reached.",
+        "execution_time" => "0ms",
+    ];
 }
 
 function execute_with_playground($code)
@@ -303,7 +308,7 @@ function execute_with_piston($code, $lang)
 {
     $map = [
         "rust" => "rust",
-        "python" => "python3",
+        "python" => "python",
         "javascript" => "javascript",
         "typescript" => "typescript",
         "go" => "go",
@@ -312,33 +317,53 @@ function execute_with_piston($code, $lang)
         "c" => "c",
     ];
     $piston_lang = $map[$lang["slug"]] ?? "rust";
-    $payload = json_encode(["language" => $piston_lang, "source" => $code]);
+    $payload = json_encode([
+        "language" => $piston_lang,
+        "version" => "*",
+        "files" => [["name" => "main", "content" => $code]],
+    ]);
     $ch = curl_init("https://emkc.org/api/v2/piston/execute");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
     curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
     curl_close($ch);
-    if ($http_code === 200 && $response) {
+
+    if ($response && $http_code === 200) {
         $result = json_decode($response, true);
         if (isset($result["run"])) {
             $output = $result["run"]["stdout"] ?? "";
             $stderr = $result["run"]["stderr"] ?? "";
-            if ($result["run"]["code"] !== 0 && empty($output)) {
+            if (($result["run"]["code"] ?? 0) !== 0 && empty($output)) {
                 $stderr = $result["compile"]["stderr"] ?? $stderr;
+            }
+            $compile_stderr = $result["compile"]["stderr"] ?? "";
+            if (!empty($compile_stderr) && empty($stderr)) {
+                $stderr = $compile_stderr;
             }
             return [
                 "success" => true,
                 "output" => $output,
                 "stderr" => $stderr,
-                "execution_time" => "Piston API",
+                "execution_time" => ($result["run"]["time"] ?? "0") . "s",
             ];
         }
     }
-    return ["success" => false];
+
+    return [
+        "success" => false,
+        "output" => "",
+        "stderr" =>
+            "Execution service error (HTTP " .
+            $http_code .
+            "): " .
+            ($error ?: "Unknown error"),
+        "execution_time" => "0ms",
+    ];
 }
 
 function simulate_execution($code, $lesson_id, $lang)
