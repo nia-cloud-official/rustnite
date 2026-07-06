@@ -3335,36 +3335,62 @@ function import_external_challenge($challenge)
 }
 function render_markdown($text)
 {
-    $text = htmlspecialchars($text);
-    // Code blocks (before other transformations)
-    $text = preg_replace(
+    // Extract code blocks first to preserve them from htmlspecialchars
+    $code_blocks = [];
+    $text = preg_replace_callback(
         "/```(\w+)?\s*([\s\S]*?)```/",
-        '<pre class="code-block"><code>$2</code></pre>',
+        function ($m) use (&$code_blocks) {
+            $lang = !empty($m[1]) ? htmlspecialchars($m[1]) : "";
+            $code = $m[2];
+            $placeholder = "%%CODE_BLOCK_" . count($code_blocks) . "%%";
+            $code_blocks[$placeholder] =
+                '<pre class="code-block"><code>' .
+                htmlspecialchars($code) .
+                "</code></pre>";
+            return $placeholder;
+        },
         $text,
     );
+
+    // Now safely escape the rest
+    $text = htmlspecialchars($text);
+
     // Inline code
     $text = preg_replace("/`([^`]+)`/", '<code>$1</code>', $text);
+
     // Headers
     $text = preg_replace('/^### (.+)$/m', '<h3>$1</h3>', $text);
     $text = preg_replace('/^## (.+)$/m', '<h2>$1</h2>', $text);
     $text = preg_replace('/^# (.+)$/m', '<h1>$1</h1>', $text);
+
     // Bold
     $text = preg_replace("/\*\*(.+?)\*\*/", '<strong>$1</strong>', $text);
+
     // Italic
     $text = preg_replace("/\*(.+?)\*/", '<em>$1</em>', $text);
+
     // Links
     $text = preg_replace(
         "/\[([^\]]+)\]\(([^)]+)\)/",
         '<a href="$2" target="_blank">$1</a>',
         $text,
     );
+
     // Lists
     $text = preg_replace('/^\- (.+)$/m', '<li>$1</li>', $text);
     $text = preg_replace('/(<li>.*<\/li>\n?)+/s', '<ul>$0</ul>', $text);
+
     // Blockquotes
     $text = preg_replace('/^> (.+)$/m', '<blockquote>$1</blockquote>', $text);
+
     // Horizontal rules
     $text = preg_replace('/^---$/m', "<hr>", $text);
+
+    // Restore code blocks
+    foreach ($code_blocks as $placeholder => $html) {
+        $text = str_replace(htmlspecialchars($placeholder), $html, $text);
+    }
+
     // Paragraphs (double newlines)
     $paragraphs = explode("\n\n", $text);
     $result = "";

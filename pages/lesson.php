@@ -43,6 +43,18 @@ if ($lesson_lang !== "rust") {
             $lesson["code_template"] = $new_content["code_template"];
             $lesson["expected_output"] = $new_content["expected_output"];
             $lesson["hints"] = $new_content["hints"];
+            // Save to database so it persists
+            $stmt = $pdo->prepare(
+                "UPDATE lessons SET content = ?, starter_code = ?, code_template = ?, expected_output = ?, hints = ? WHERE id = ?",
+            );
+            $stmt->execute([
+                $new_content["content"],
+                $new_content["starter_code"],
+                $new_content["code_template"],
+                $new_content["expected_output"],
+                $new_content["hints"],
+                $lesson["id"],
+            ]);
         } else {
             // Fallback: just fix starter_code and code_template
             $fallback_ex = get_language_fallback_exercise($lesson_lang, $topic);
