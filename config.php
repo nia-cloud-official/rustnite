@@ -108,7 +108,7 @@ $SUPPORTED_LANGUAGES = [
 // Create a GitHub OAuth App at https://github.com/settings/developers
 // Set callback URL to: https://rustnite.wasmer.app/index.php?page=login&github_callback=1
 define("GITHUB_CLIENT_ID", "Ov23liJClnmcRcpRZkct"); // <-- SET YOUR GITHUB CLIENT ID
-define("GITHUB_CLIENT_SECRET", ""); // <-- SET YOUR GITHUB CLIENT SECRET
+define("GITHUB_CLIENT_SECRET", "8328b80c2e33568fdaf09de8c193c3c4df153960"); // <-- SET YOUR GITHUB CLIENT SECRET
 define(
     "GITHUB_REDIRECT_URI",
     APP_URL . "/index.php?page=login&github_callback=1",
