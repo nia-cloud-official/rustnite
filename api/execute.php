@@ -1,15 +1,23 @@
 <?php
+// JSON header MUST be first, before any possible PHP output
+header("Content-Type: application/json");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
+
+// Start output buffering to catch stray PHP warnings/errors
+ob_start();
+
+// Suppress HTML error output — this is a JSON API
+ini_set("display_errors", 0);
 error_reporting(E_ALL);
-ini_set("display_errors", 1);
 
 require_once "../config.php";
 require_once "../includes/db.php";
 require_once "../includes/functions.php";
 
-header("Content-Type: application/json");
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+// Discard any buffered output (warnings, stray whitespace) — only send JSON
+ob_clean();
 
 // Handle preflight
 if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {

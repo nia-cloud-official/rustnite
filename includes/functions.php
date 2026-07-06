@@ -2822,20 +2822,180 @@ print(f"Count: {________}")',
         ],
     ];
 
-    // Default to a generic example if specific topic not found
-    $default = [
-        "example" => 'fn main() {
-    println!("Hello, {}!", "World");
+    // Check hardcoded examples first (fast path)
+    $lang = strtolower($language);
+    if (isset($examples[$lang][$topic])) {
+        return $examples[$lang][$topic];
+    }
+
+    // Try AI-powered generation for unknown language/topic combinations
+    $ai_result = ai_generate_code_example($language, $topic, $difficulty);
+    if ($ai_result !== null) {
+        return $ai_result;
+    }
+
+    // Ultimate fallback: language-appropriate default template
+    return get_language_fallback_example($language, $topic);
+}
+
+function get_language_fallback_example($language, $topic)
+{
+    $greeting_examples = [
+        "rust" => [
+            "example" => 'fn main() {
+    println!("Hello, World!");
 }',
-        "explanation" =>
-            "This is a basic example. Study the pattern and try writing your own version.",
-        "template" => 'fn main() {
+            "explanation" =>
+                "This is a basic Rust program. The `fn main()` function is the entry point, and `println!` is a macro that prints to the console.",
+            "template" => 'fn main() {
     // Write your code here
     println!("Hello, World!");
 }',
+        ],
+        "python" => [
+            "example" => 'print("Hello, World!")',
+            "explanation" =>
+                "This is a basic Python program. The `print()` function outputs text to the console.",
+            "template" => '# Write your code here
+print("Hello, World!")',
+        ],
+        "javascript" => [
+            "example" => 'console.log("Hello, World!");',
+            "explanation" =>
+                "This is a basic JavaScript program. `console.log()` outputs text to the console.",
+            "template" => '// Write your code here
+console.log("Hello, World!");',
+        ],
+        "typescript" => [
+            "example" => 'const greeting: string = "Hello, World!";
+console.log(greeting);',
+            "explanation" =>
+                "This is a basic TypeScript program. Type annotations are optional but help catch errors at compile time.",
+            "template" => '// Write your code here
+const greeting: string = "Hello, World!";
+console.log(greeting);',
+        ],
+        "go" => [
+            "example" => 'package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, World!")
+}',
+            "explanation" =>
+                "This is a basic Go program. The `package main` declares the package, and `func main()` is the entry point.",
+            "template" => 'package main
+
+import "fmt"
+
+func main() {
+    // Write your code here
+    fmt.Println("Hello, World!")
+}',
+        ],
+        "java" => [
+            "example" => 'public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
+    }
+}',
+            "explanation" =>
+                "This is a basic Java program. The class must match the filename, and `main()` is the entry point.",
+            "template" => 'public class Main {
+    public static void main(String[] args) {
+        // Write your code here
+        System.out.println("Hello, World!");
+    }
+}',
+        ],
+        "cpp" => [
+            "example" => '#include <iostream>
+using namespace std;
+int main() {
+    cout << "Hello, World!" << endl;
+    return 0;
+}',
+            "explanation" =>
+                "This is a basic C++ program. `#include <iostream>` handles input/output, and `main()` is the entry point.",
+            "template" => '#include <iostream>
+using namespace std;
+int main() {
+    // Write your code here
+    cout << "Hello, World!" << endl;
+    return 0;
+}',
+        ],
+        "c" => [
+            "example" => '#include <stdio.h>
+int main() {
+    printf("Hello, World!");
+    return 0;
+}',
+            "explanation" =>
+                "This is a basic C program. `#include <stdio.h>` provides printf, and `main()` is the entry point.",
+            "template" => '#include <stdio.h>
+int main() {
+    // Write your code here
+    printf("Hello, World!");
+    return 0;
+}',
+        ],
     ];
 
-    return $examples[strtolower($language)][$topic] ?? $default;
+    $lang = strtolower($language);
+    if (isset($greeting_examples[$lang])) {
+        $base = $greeting_examples[$lang];
+        // Customize the description for the topic
+        $base["explanation"] =
+            "This is a basic {$lang} program demonstrating {$topic}. " .
+            "Study the pattern and try writing your own version.";
+        return $base;
+    }
+
+    // Unknown language — return a comment-based template
+    return [
+        "example" => "// Write your {$language} code here\n// Example for: {$topic}",
+        "explanation" => "Write a {$language} program that demonstrates {$topic}.",
+        "template" => "// Write your {$language} code here\n// Example for: {$topic}\n",
+    ];
+}
+
+function ai_generate_code_example($language, $topic, $difficulty)
+{
+    if (!AI_TUTOR_ENABLED) {
+        return null;
+    }
+
+    $prompt =
+        "Generate a {$difficulty}-level code example in {$language} about \"{$topic}\". " .
+        "Return ONLY a valid JSON object with exactly these 3 fields (no markdown, no extra text):\n" .
+        "- example: A complete, working {$language} code snippet demonstrating {$topic}\n" .
+        "- explanation: A clear 1-2 sentence explanation of what the code does\n" .
+        "- template: A fill-in-the-blank version of the example where key parts are replaced with ________ (for students to complete)\n\n" .
+        "The code MUST be syntactically correct {$language}.\n" .
+        'Return ONLY valid JSON in this format: {"example":"...","explanation":"...","template":"..."}';
+
+    $response = call_opencode_api($prompt, $language);
+    if (!$response) {
+        return null;
+    }
+
+    // Try to extract JSON from the response
+    $json = $response;
+    // Handle markdown-wrapped JSON
+    if (preg_match("/```(?:json)?\s*([\s\S]*?)```/", $response, $m)) {
+        $json = $m[1];
+    }
+    $parsed = json_decode(trim($json), true);
+    if (
+        $parsed &&
+        isset($parsed["example"], $parsed["explanation"], $parsed["template"])
+    ) {
+        return $parsed;
+    }
+
+    return null;
 }
 
 function get_code_exercise($language, $topic, $difficulty)
@@ -2897,12 +3057,69 @@ fn main() {
         ],
     ];
 
-    $default = [
-        "instruction" => "Write code that demonstrates the $topic concept in $language. Create a working example and test it.",
-        "starter_code" => 'fn main() {
+    // Check hardcoded exercises first
+    $lang = strtolower($language);
+    if (isset($exercises[$lang][$topic])) {
+        return $exercises[$lang][$topic];
+    }
+
+    // Try AI-powered generation
+    $ai_result = ai_generate_code_exercise($language, $topic, $difficulty);
+    if ($ai_result !== null) {
+        return $ai_result;
+    }
+
+    // Ultimate fallback: language-appropriate default
+    return get_language_fallback_exercise($language, $topic);
+}
+
+function get_language_fallback_exercise($language, $topic)
+{
+    $starter_codes = [
+        "rust" => 'fn main() {
     // Your implementation here
 
 }',
+        "python" => '# Your implementation here
+',
+        "javascript" => '// Your implementation here
+',
+        "typescript" => '// Your implementation here
+',
+        "go" => 'package main
+
+import "fmt"
+
+func main() {
+    // Your implementation here
+
+}',
+        "java" => 'public class Main {
+    public static void main(String[] args) {
+        // Your implementation here
+
+    }
+}',
+        "cpp" => '#include <iostream>
+using namespace std;
+int main() {
+    // Your implementation here
+    return 0;
+}',
+        "c" => '#include <stdio.h>
+int main() {
+    // Your implementation here
+    return 0;
+}',
+    ];
+
+    $lang = strtolower($language);
+    $code =
+        $starter_codes[$lang] ?? "// Your {$language} implementation here\n";
+
+    return [
+        "instruction" => "Write code that demonstrates {$topic} in {$language}. Create a working example and test it.",
+        "starter_code" => $code,
         "expected_output" => "Success!",
         "test_cases" => [["input" => "", "expected" => "Success!"]],
         "hints" => [
@@ -2911,9 +3128,41 @@ fn main() {
             "Test with different values",
         ],
     ];
+}
 
-    $lang_exercises = $exercises[strtolower($language)] ?? [];
-    return $lang_exercises[$topic] ?? $default;
+function ai_generate_code_exercise($language, $topic, $difficulty)
+{
+    if (!AI_TUTOR_ENABLED) {
+        return null;
+    }
+
+    $prompt =
+        "Generate a {$difficulty}-level coding exercise in {$language} about \"{$topic}\". " .
+        "Return ONLY a valid JSON object with exactly these 5 fields (no markdown, no extra text):\n" .
+        "- instruction: A clear instruction for the student to write code (1-2 sentences)\n" .
+        "- starter_code: A {$language} code template with blanks for the student to fill in\n" .
+        "- expected_output: The exact expected output when the code runs correctly\n" .
+        "- test_cases: An array of test cases, each with \"input\" and \"expected\" fields\n" .
+        "- hints: An array of 2-3 helpful hints\n\n" .
+        "The starter_code MUST be valid {$language} syntax with placeholders where the student writes code.\n" .
+        'Return ONLY valid JSON in this format: {"instruction":"...","starter_code":"...","expected_output":"...","test_cases":[...],"hints":[...]}';
+
+    $response = call_opencode_api($prompt, $language);
+    if (!$response) {
+        return null;
+    }
+
+    // Try to extract JSON from the response
+    $json = $response;
+    if (preg_match("/```(?:json)?\s*([\s\S]*?)```/", $response, $m)) {
+        $json = $m[1];
+    }
+    $parsed = json_decode(trim($json), true);
+    if ($parsed && isset($parsed["instruction"], $parsed["starter_code"])) {
+        return $parsed;
+    }
+
+    return null;
 }
 
 function ensure_lessons_exist($language_id, $count = 5)
