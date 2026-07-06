@@ -25,6 +25,44 @@ if (!$lesson) {
     exit();
 }
 
+// FIX: Existing lessons may have Rust starter code stored from the old buggy generator.
+// If the lesson's language is NOT Rust but the stored code contains Rust code, replace it.
+$lesson_lang = strtolower($lesson["language_slug"] ?? "rust");
+if ($lesson_lang !== "rust") {
+    $rust_patterns = [
+        "fn main()",
+        "println!",
+        "rustc",
+        "// Write your code here",
+    ];
+    foreach (["starter_code", "code_template"] as $field) {
+        if (!empty($lesson[$field])) {
+            $is_rust = false;
+            foreach ($rust_patterns as $pat) {
+                if (str_contains($lesson[$field], $pat)) {
+                    $is_rust = true;
+                    break;
+                }
+            }
+            if ($is_rust) {
+                $fallback_ex = get_language_fallback_exercise(
+                    $lesson_lang,
+                    $lesson["title"] ?? "",
+                );
+                $fallback_example = get_language_fallback_example(
+                    $lesson_lang,
+                    $lesson["title"] ?? "",
+                );
+                if ($field === "starter_code") {
+                    $lesson[$field] = $fallback_ex["starter_code"];
+                } else {
+                    $lesson[$field] = $fallback_example["template"];
+                }
+            }
+        }
+    }
+}
+
 $is_completed = is_lesson_completed($_SESSION["user_id"], $lesson_id);
 
 // Get user's previous code
