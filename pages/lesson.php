@@ -25,8 +25,6 @@ if (!$lesson) {
     exit();
 }
 
-// FIX: Existing lessons may have Rust code stored from the old buggy generator.
-// If the lesson's language is NOT Rust but the stored code contains Rust, replace it.
 $lesson_lang = strtolower($lesson["language_slug"] ?? "rust");
 if ($lesson_lang !== "rust") {
     $rust_patterns = [

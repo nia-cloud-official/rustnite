@@ -1,14 +1,11 @@
 <?php
-// JSON header MUST be first, before any possible PHP output
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
-// Start output buffering to catch stray PHP warnings/errors
 ob_start();
 
-// Register shutdown handler to catch fatal errors as JSON
 register_shutdown_function(function () {
     $error = error_get_last();
     if (
@@ -35,10 +32,7 @@ require_once "../config.php";
 require_once "../includes/db.php";
 require_once "../includes/functions.php";
 
-// config.php sets display_errors=1, but we're a JSON API — override it now
 ini_set("display_errors", 0);
-
-// Discard any buffered output (warnings, stray whitespace) — only send JSON
 ob_clean();
 
 // Handle preflight
