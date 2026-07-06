@@ -117,21 +117,15 @@ $languages = get_languages();
                 </div>
 
                 <div style="margin-top:16px; border-top:1px solid #2D2D35; padding-top:16px;">
-                    <?php if (
-                        defined("GITHUB_CLIENT_ID") &&
-                        !empty(GITHUB_CLIENT_ID)
-                    ): ?>
                     <a href="https://github.com/login/oauth/authorize?client_id=<?= GITHUB_CLIENT_ID ?>&redirect_uri=<?= urlencode(
     GITHUB_REDIRECT_URI,
 ) ?>&scope=user:email"
-                       <div style="margin-top:16px; border-top:1px solid #2D2D35; padding-top:16px;">
-                           <a href="https://github.com/login/oauth/authorize?client_id=<?= defined('GITHUB_CLIENT_ID') ? GITHUB_CLIENT_ID : '' ?>&redirect_uri=<?= urlencode(defined('GITHUB_REDIRECT_URI') ? GITHUB_REDIRECT_URI : '') ?>&scope=user:email"
-                              class="tw-btn tw-btn-block"
-                              style="background:#24292e; color:white; justify-content:center; border:1px solid #3A3A45;">
-                               <i class="fab fa-github"></i>
-                               Sign up with GitHub
-                           </a>
-                       </div>
+                       class="tw-btn tw-btn-block"
+                       style="background:#24292e; color:white; justify-content:center; border:1px solid #3A3A45;">
+                        <i class="fab fa-github"></i>
+                        Sign up with GitHub
+                    </a>
+                </div>
             </div>
         </div>
     </div>
