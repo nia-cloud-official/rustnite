@@ -3,6 +3,33 @@ $page_title = "Mini-Games";
 $games = get_mini_games();
 $languages = get_languages();
 
+// Auto-generate games if none exist
+if (empty($games)) {
+    $game_types = [
+        "syntax_speed",
+        "bug_hunt",
+        "output_prediction",
+        "code_race",
+    ];
+    $difficulties = ["beginner", "intermediate", "advanced"];
+    foreach ($languages as $lang) {
+        foreach ($game_types as $gtype) {
+            $diff = $difficulties[array_rand($difficulties)];
+            try {
+                create_ai_generated_mini_game(
+                    $_SESSION["user_id"],
+                    $lang["slug"],
+                    $gtype,
+                    $diff,
+                );
+            } catch (Exception $e) {
+                // Ignore errors
+            }
+        }
+    }
+    $games = get_mini_games();
+}
+
 // Handle AI game generation
 $ai_result = null;
 if (
