@@ -1910,6 +1910,48 @@ function get_daily_challenge($date = null)
     return $stmt->fetch();
 }
 
+function generate_ai_daily_challenge($lang, $difficulty, $challenge_type)
+{
+    if (
+        !AI_TUTOR_ENABLED ||
+        !defined("OPENCODE_API_KEY") ||
+        empty(OPENCODE_API_KEY)
+    ) {
+        return null;
+    }
+
+    $prompt =
+        "Generate a {$difficulty} {$challenge_type} coding challenge in {$lang["name"]}. " .
+        "Return ONLY a valid JSON object with exactly these 6 fields (no markdown, no extra text):\n" .
+        "- title: A short, catchy title for the challenge (max 60 chars)\n" .
+        "- description: A clear 2-3 sentence description of what the challenge requires\n" .
+        "- starter_code: {$lang["name"]} code template with blanks for the user to fill in\n" .
+        "- expected_output: The exact expected output\n" .
+        "- test_cases: An array of test cases, each with \"input\" and \"expected\" fields\n" .
+        "- hints: An array of 2-3 helpful hints\n\n" .
+        'Return ONLY valid JSON in this format: {"title":"...","description":"...","starter_code":"...","expected_output":"...","test_cases":[...],"hints":[...]}';
+
+    $response = call_opencode_api($prompt, $lang["slug"]);
+    if (!$response) {
+        return null;
+    }
+
+    // Try to extract JSON from the response
+    $json = $response;
+    if (preg_match("/```(?:json)?\s*([\s\S]*?)```/", $response, $m)) {
+        $json = $m[1];
+    }
+    $parsed = json_decode(trim($json), true);
+    if (
+        $parsed &&
+        isset($parsed["title"], $parsed["description"], $parsed["starter_code"])
+    ) {
+        return $parsed;
+    }
+
+    return null;
+}
+
 function create_daily_challenge($data)
 {
     global $pdo;

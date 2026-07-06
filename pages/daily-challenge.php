@@ -6,7 +6,6 @@ $daily = get_daily_challenge();
 
 // Auto-generate today's challenge if none exists
 if (!$daily) {
-    // Pick a random language
     $langs = get_languages();
     if (!empty($langs)) {
         $lang = $langs[array_rand($langs)];
@@ -15,67 +14,52 @@ if (!$daily) {
         $challenge_types = ["coding", "debugging", "optimization", "algorithm"];
         $challenge_type = $challenge_types[array_rand($challenge_types)];
 
-        $titles = [
-            "coding" => [
-                "Array Challenge",
-                "String Manipulation",
-                "Number Cruncher",
-                "Pattern Builder",
-                "Data Transformer",
-            ],
-            "debugging" => [
-                "Find the Bug",
-                "Error Hunter",
-                "Fix the Logic",
-                "Patch the Code",
-                "Bug Squasher",
-            ],
-            "optimization" => [
-                "Speed Runner",
-                "Memory Saver",
-                "Efficiency Expert",
-                "Code Optimizer",
-                "Performance Tuner",
-            ],
-            "algorithm" => [
-                "Algorithm Master",
-                "Sort It Out",
-                "Search & Find",
-                "Path Finder",
-                "Data Structure Pro",
-            ],
-        ];
+        // Try AI-generated challenge first
+        $ai_challenge = generate_ai_daily_challenge(
+            $lang,
+            $difficulty,
+            $challenge_type,
+        );
 
-        $title =
-            $lang["name"] .
-            ": " .
-            ($titles[$challenge_type][array_rand($titles[$challenge_type])] ??
-                "Daily Challenge");
-        $descriptions = [
-            "coding" =>
-                "Write a program that solves the following challenge. Make sure your code handles edge cases!",
-            "debugging" =>
-                "The following code has a bug. Find it and fix it to make the program work correctly.",
-            "optimization" =>
-                "Optimize the given code to make it faster and more efficient while maintaining the same output.",
-            "algorithm" =>
-                "Implement the algorithm described below. Efficiency matters!",
-        ];
-
-        $data = [
-            "title" => $title,
-            "description" =>
-                $descriptions[$challenge_type] ??
-                'Complete today\'s coding challenge!',
-            "language_id" => $lang["id"],
-            "difficulty" => $difficulty,
-            "challenge_type" => $challenge_type,
-            "starter_code" => "// Write your solution here",
-            "test_cases" => [],
-            "xp_reward" => XP_DAILY_CHALLENGE,
-            "bonus_xp" => 50,
-            "date" => date("Y-m-d"),
-        ];
+        if ($ai_challenge) {
+            $data = [
+                "title" => $ai_challenge["title"],
+                "description" => $ai_challenge["description"],
+                "language_id" => $lang["id"],
+                "difficulty" => $difficulty,
+                "challenge_type" => $challenge_type,
+                "starter_code" => $ai_challenge["starter_code"],
+                "test_cases" => $ai_challenge["test_cases"] ?? [],
+                "xp_reward" => XP_DAILY_CHALLENGE,
+                "bonus_xp" => 50,
+                "date" => date("Y-m-d"),
+            ];
+        } else {
+            // Fallback to basic challenge
+            $data = [
+                "title" =>
+                    $lang["name"] .
+                    ": " .
+                    ucfirst($challenge_type) .
+                    " Challenge",
+                "description" =>
+                    "Complete today's " .
+                    $difficulty .
+                    " " .
+                    $challenge_type .
+                    " challenge in " .
+                    $lang["name"] .
+                    ". Write working code and test it.",
+                "language_id" => $lang["id"],
+                "difficulty" => $difficulty,
+                "challenge_type" => $challenge_type,
+                "starter_code" => "// Write your solution here",
+                "test_cases" => [],
+                "xp_reward" => XP_DAILY_CHALLENGE,
+                "bonus_xp" => 50,
+                "date" => date("Y-m-d"),
+            ];
+        }
 
         try {
             $challenge_id = create_daily_challenge($data);

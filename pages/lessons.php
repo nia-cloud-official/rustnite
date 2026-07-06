@@ -36,9 +36,39 @@ if (!empty($search_query)) {
 
 $sql .= " ORDER BY l.language_id, l.order_num ASC";
 
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$lessons = $stmt->fetchAll();
+try {
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $lessons = $stmt->fetchAll();
+} catch (PDOException $e) {
+    // Fallback if language_id column doesn't exist
+    $sql = "
+        SELECT l.*, lang.name as language_name, lang.slug as language_slug,
+               lang.color as language_color, lang.icon as language_icon,
+               up.completed, up.completed_at
+        FROM lessons l, languages lang
+        LEFT JOIN user_progress up ON l.id = up.lesson_id AND up.user_id = ?
+        WHERE l.language_id = lang.id
+    ";
+    $params = [$_SESSION["user_id"]];
+    if ($selected_lang > 0) {
+        $sql .= " AND l.language_id = ?";
+        $params[] = $selected_lang;
+    }
+    if ($difficulty_filter !== "all") {
+        $sql .= " AND l.difficulty = ?";
+        $params[] = $difficulty_filter;
+    }
+    if (!empty($search_query)) {
+        $sql .= " AND (l.title LIKE ? OR l.description LIKE ?)";
+        $params[] = "%{$search_query}%";
+        $params[] = "%{$search_query}%";
+    }
+    $sql .= " ORDER BY l.order_num ASC";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $lessons = $stmt->fetchAll();
+}
 
 // Auto-generate lessons if none exist (no search, no filter)
 if (empty($lessons) && empty($search_query) && $selected_lang > 0) {
