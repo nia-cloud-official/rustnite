@@ -175,8 +175,8 @@
         }
 
         .tw-logo {
-            width: 40px;
-            height: 40px;
+            width: 30px;
+            height: 10px;
             background: linear-gradient(135deg, #9147FF, #772CE8);
             border-radius: 8px;
             display: flex;
@@ -877,7 +877,7 @@
 <!-- ====== LEFT SIDEBAR (TWITCH STYLE) ====== -->
 <div class="tw-sidebar" id="main-sidebar">
     <div class="tw-sidebar-header">
-        <img src="assets/logo.png" alt="Rustnite" style="height: 40px; display: block;">
+        <img src="assets/logo.png" alt="Rustnite" style="height: 20px; display: block;">
     </div>
 
     <div class="tw-sidebar-section">
