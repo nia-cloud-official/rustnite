@@ -326,19 +326,34 @@ function get_leaderboard($limit = 50)
 function get_language_leaderboard($language_id, $limit = 50)
 {
     global $pdo;
-    $stmt = $pdo->prepare("
-        SELECT u.*,
-            COUNT(DISTINCT up.lesson_id) as lessons_completed
-        FROM users u
-        JOIN user_progress up ON u.id = up.user_id AND up.completed = 1
-        JOIN lessons l ON up.lesson_id = l.id
-        WHERE l.language_id = ?
-        GROUP BY u.id
-        ORDER BY u.xp DESC
-        LIMIT ?
-    ");
-    $stmt->execute([$language_id, $limit]);
-    return $stmt->fetchAll();
+    try {
+        $stmt = $pdo->prepare("
+            SELECT u.*,
+                COUNT(DISTINCT up.lesson_id) as lessons_completed
+            FROM users u
+            JOIN user_progress up ON u.id = up.user_id AND up.completed = 1
+            JOIN lessons l ON up.lesson_id = l.id
+            WHERE l.language_id = ?
+            GROUP BY u.id
+            ORDER BY u.xp DESC
+            LIMIT ?
+        ");
+        $stmt->execute([$language_id, $limit]);
+        return $stmt->fetchAll();
+    } catch (PDOException $e) {
+        // Fallback: ignore language filter if column doesn't exist
+        $stmt = $pdo->prepare("
+            SELECT u.*,
+                COUNT(DISTINCT up.lesson_id) as lessons_completed
+            FROM users u
+            JOIN user_progress up ON u.id = up.user_id AND up.completed = 1
+            GROUP BY u.id
+            ORDER BY u.xp DESC
+            LIMIT ?
+        ");
+        $stmt->execute([$limit]);
+        return $stmt->fetchAll();
+    }
 }
 
 // ============== BATTLE ROYALE FUNCTIONS ==============

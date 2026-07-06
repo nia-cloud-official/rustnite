@@ -37,10 +37,13 @@ if (!in_array($page, $allowed_pages)) {
 if ($page === "logout") {
     if (isset($_SESSION["user_id"])) {
         try {
-            $stmt = $pdo->prepare(
-                "UPDATE users SET is_online = FALSE WHERE id = ?",
-            );
-            $stmt->execute([$_SESSION["user_id"]]);
+            $stmt = $pdo->query("SHOW COLUMNS FROM users LIKE 'is_online'");
+            if ($stmt->fetch()) {
+                $stmt = $pdo->prepare(
+                    "UPDATE users SET is_online = FALSE WHERE id = ?",
+                );
+                $stmt->execute([$_SESSION["user_id"]]);
+            }
         } catch (PDOException $e) {
         }
     }
