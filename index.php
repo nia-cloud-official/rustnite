@@ -113,7 +113,7 @@ if (isset($_GET["github_callback"]) && isset($_GET["code"])) {
                                 $user["id"],
                             ]);
                         }
-                        $_SESSION["user_id"] = $user["id"];
+                        $_SESSION["user_id"] = (int) $user["id"];
                         $_SESSION["username"] = $user["username"];
                     } else {
                         $username = preg_replace(
@@ -142,11 +142,12 @@ if (isset($_GET["github_callback"]) && isset($_GET["code"])) {
                             $github_avatar,
                             $random_pass,
                         ]);
-                        $user_id = $pdo->lastInsertId();
+                        $user_id = (int) $pdo->lastInsertId();
                         $_SESSION["user_id"] = $user_id;
                         $_SESSION["username"] = $username;
                     }
 
+                    session_write_close();
                     header("Location: index.php?page=dashboard");
                     exit();
                 }
