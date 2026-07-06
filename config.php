@@ -42,13 +42,14 @@ define("AI_TUTOR_MAX_TOKENS", 1024);
 define("AI_TUTOR_TEMPERATURE", 0.7);
 
 // OpenCode API Configuration
-// Get your API key from https://opencode.com
-// Leave OPENCODE_API_KEY empty to use built-in AI responses (fallback mode)
+// Get your API key from https://opencode.com/settings/api
+// Leave OPENCODE_API_KEY empty to use built-in Big Pickle AI responses (fallback mode)
+// The built-in fallback is context-aware and doesn't need an API key
 define(
     "OPENCODE_API_KEY",
-    "sk-A4roVvunrQ1woG7zQFWIUO0XIUIV46vFEDib6Ezh2zccwWs5EbnjukJv5hzu6Uby",
-); // <-- SET YOUR API KEY HERE
-define("OPENCODE_API_URL", "https://api.opencode.com/v1/chat/completions"); // OpenAI-compatible endpoint
+    "", // <-- SET YOUR API KEY HERE from https://opencode.com/settings/api
+);
+define("OPENCODE_API_URL", "https://opencode.com/api/chat"); // OpenCode API endpoint
 
 // Supported languages
 define("DEFAULT_LANGUAGE", 1); // Rust

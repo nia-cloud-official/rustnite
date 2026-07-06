@@ -777,10 +777,7 @@ function call_opencode_api($context, $language)
     ];
 
     $payload = json_encode([
-        "model" => AI_TUTOR_MODEL,
         "messages" => $messages,
-        "max_tokens" => AI_TUTOR_MAX_TOKENS,
-        "temperature" => AI_TUTOR_TEMPERATURE,
     ]);
 
     $ch = curl_init(OPENCODE_API_URL);
@@ -799,14 +796,23 @@ function call_opencode_api($context, $language)
     $error = curl_error($ch);
     curl_close($ch);
 
-    if ($http_code === 200 && $response) {
+    if ($response && $http_code === 200) {
         $result = json_decode($response, true);
+        // OpenAI-compatible format
         if (isset($result["choices"][0]["message"]["content"])) {
             return $result["choices"][0]["message"]["content"];
         }
-        // Some APIs use different response format
+        // OpenCode API format
+        if (isset($result["data"]) && !empty($result["data"])) {
+            return $result["data"];
+        }
+        // Simple response format
         if (isset($result["response"])) {
             return $result["response"];
+        }
+        // Content field directly
+        if (isset($result["content"])) {
+            return $result["content"];
         }
     }
 
