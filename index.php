@@ -30,7 +30,6 @@ $allowed_pages = [
 if (!in_array($page, $allowed_pages)) {
     header("Location: index.php?page=dashboard");
     exit();
-    exit();
 }
 
 // Handle logout

@@ -135,19 +135,19 @@ if ($current_chat_id) {
                                 debug your code, or get explanations of complex concepts.
                             </p>
                             <div class="grid grid-cols-2 gap-3 max-w-sm mx-auto">
-                                <div class="tw-card tw-card-body" style="cursor:pointer; text-align:center; font-size:12px;" onclick="sendSuggestion('Explain variables in PHP')">
+                                <div class="tw-card tw-card-body" style="cursor:pointer; text-align:center; font-size:12px;" onclick="sendSuggestion('Explain variables')">
                                     <i class="fas fa-code" style="color:#9147FF;"></i>
                                     <div>Explain variables</div>
                                 </div>
-                                <div class="tw-card tw-card-body" style="cursor:pointer; text-align:center; font-size:12px;" onclick="sendSuggestion('Help me debug my code')">
+                                <div class="tw-card tw-card-body" style="cursor:pointer; text-align:center; font-size:12px;" onclick="sendSuggestion('Help debug')">
                                     <i class="fas fa-bug" style="color:#E9197B;"></i>
-                                    <div>Debug code</div>
+                                    <div>Help debug</div>
                                 </div>
-                                <div class="tw-card tw-card-body" style="cursor:pointer; text-align:center; font-size:12px;" onclick="sendSuggestion('Show me a code example')">
+                                <div class="tw-card tw-card-body" style="cursor:pointer; text-align:center; font-size:12px;" onclick="sendSuggestion('Show example')">
                                     <i class="fas fa-file-code" style="color:#00D95A;"></i>
-                                    <div>Code examples</div>
+                                    <div>Show example</div>
                                 </div>
-                                <div class="tw-card tw-card-body" style="cursor:pointer; text-align:center; font-size:12px;" onclick="sendSuggestion('Best practices in Rust')">
+                                <div class="tw-card tw-card-body" style="cursor:pointer; text-align:center; font-size:12px;" onclick="sendSuggestion('Best practices')">
                                     <i class="fas fa-book" style="color:#FF6B35;"></i>
                                     <div>Best practices</div>
                                 </div>

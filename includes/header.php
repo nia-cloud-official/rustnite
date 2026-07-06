@@ -12,7 +12,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-    <!-- Twitch-inspired Tailwind Config -->
+    <!-- Tailwind Config -->
     <script>
         tailwind.config = {
             theme: {
@@ -119,7 +119,7 @@
     </script>
 
     <style>
-        /* ====== GLOBAL RESET & TWITCH THEME ====== */
+        /* ====== GLOBAL RESET ====== */
         * { font-family: 'Inter', system-ui, sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
 
         html {
@@ -149,7 +149,7 @@
             background: #9147FF;
         }
 
-        /* ====== TWITCH INSPIRED LAYOUT ====== */
+        /* ====== SIDEBAR ====== */
         .tw-sidebar {
             background: #1F1F23;
             width: 240px;
@@ -283,7 +283,7 @@
             position: relative;
         }
 
-        /* ====== TOP NAV BAR (TWITCH STYLE) ====== */
+        /* ====== TOP NAV BAR ====== */
         .tw-top-bar {
             background: #18181B;
             height: 60px;
@@ -443,7 +443,7 @@
             padding: 24px;
         }
 
-        /* ====== TWITCH CARDS ====== */
+        /* ====== CARDS ====== */
         .tw-card {
             background: #18181B;
             border: 1px solid #2D2D35;
@@ -615,7 +615,7 @@
             animation: gradient-shift 8s ease infinite;
         }
 
-        /* ====== SCAN LINE OVERLAY (REMOVED) ====== */
+        /* ====== SCAN LINE OVERLAY ====== */
 
         /* ====== LIVE INDICATOR ====== */
         .live-dot {

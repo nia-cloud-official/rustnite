@@ -734,7 +734,7 @@ function ask_ai_tutor($chat_id, $user_id, $message)
 
     $context .= "Assistant: ";
 
-    // Big Pickle AI response (built-in tutor)
+    // Get AI response
     $response = generate_ai_response($context, $chat["language"]);
 
     // Save assistant message
@@ -782,7 +782,7 @@ function ask_ai_tutor($chat_id, $user_id, $message)
 
 function generate_ai_response($context, $language)
 {
-    // Try the OpenCode API
+    // Try the configured API
     if (defined("OPENCODE_API_KEY") && !empty(OPENCODE_API_KEY)) {
         $response = call_opencode_api($context, $language);
         if ($response !== null) {
@@ -880,7 +880,7 @@ function generate_mini_game(
         return ["error" => "Language not found"];
     }
 
-    // Build game content based on type using Big Pickle intelligence
+    // Build game content based on type
     switch ($type) {
         case "syntax_speed":
             return generate_syntax_speed_game($lang, $difficulty);
@@ -900,7 +900,6 @@ function generate_syntax_speed_game($lang, $difficulty)
     $language = $lang["slug"];
     $questions = [];
 
-    // Common syntax patterns per language
     $patterns = get_syntax_patterns($language, $difficulty);
     shuffle($patterns);
 
@@ -2233,7 +2232,7 @@ function generate_ai_lesson(
     $topics = get_lesson_topics($lang["slug"], $difficulty);
     $selected_topic = $topic ?: $topics[array_rand($topics)];
 
-    // Generate complete lesson content using Big Pickle intelligence
+    // Generate complete lesson content
     $content = build_lesson_content($lang, $difficulty, $selected_topic);
 
     // Check if lesson already exists (avoid duplicates)
@@ -3092,19 +3091,19 @@ print(f"x={x}, y={y}")',
         ],
     ];
 
-    // Check hardcoded examples first (fast path)
+    // Check hardcoded examples first
     $lang = strtolower($language);
     if (isset($examples[$lang][$topic])) {
         return $examples[$lang][$topic];
     }
 
-    // Try AI-powered generation for unknown language/topic combinations
+    // Try AI generation for unknown combinations
     $ai_result = ai_generate_code_example($language, $topic, $difficulty);
     if ($ai_result !== null) {
         return $ai_result;
     }
 
-    // Ultimate fallback: language-appropriate default template
+    // Fallback: language-appropriate default template
     return get_language_fallback_example($language, $topic);
 }
 
@@ -3595,13 +3594,13 @@ fn main() {
         return $exercises[$lang][$topic];
     }
 
-    // Try AI-powered generation
+    // Try AI generation
     $ai_result = ai_generate_code_exercise($language, $topic, $difficulty);
     if ($ai_result !== null) {
         return $ai_result;
     }
 
-    // Ultimate fallback: language-appropriate default
+    // Fallback: language-appropriate default
     return get_language_fallback_exercise($language, $topic);
 }
 
