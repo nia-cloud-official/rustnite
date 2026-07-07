@@ -124,7 +124,7 @@ All settings in `config.php`:
 | `GITHUB_CLIENT_SECRET` | GitHub OAuth App client secret |
 | `AI_TUTOR_ENABLED` | Enable/disable AI tutor |
 | `AI_TUTOR_MODEL` | Model ID (`big-pickle`) |
-| `AI_TUTOR_MAX_TOKENS` | Max tokens per response (default: 1024) |
+| `AI_TUTOR_MAX_TOKENS` | Max tokens per response (default: 2048) |
 | `AI_TUTOR_TEMPERATURE` | Response creativity (0.0-1.0) |
 
 ---
